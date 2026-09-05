@@ -12,7 +12,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import kotlin.math.sqrt
 
 // Marcador de sobrancelha (frase vira pergunta) — extraído do LibrasAnalyzer.
-// Roda nos DOIS modos (igual ao Holistic do Python, que sempre lê o rosto),
+// Roda apenas no modo CORPO, onde o marcador facial sera validado primeiro,
 // mas só a cada FACE_DETECT_STRIDE frames, e se a inicialização falhar
 // (aparelho fraco/sem o asset) o app segue sem o marcador em vez de quebrar
 // — mesma filosofia defensiva do BodyGestureEngine.
@@ -24,18 +24,52 @@ internal class FaceMarkerEngine(private val context: Context) {
     private var interrogativoAtivo = false
     private var faceFrameCounter = 0
 
-    // Chamado uma vez por frame (nos dois modos). `onChange` só é disparado
-    // quando o estado da sobrancelha muda, nunca a cada frame.
-    fun step(mpImage: MPImage, timestamp: Long, onChange: (ativo: Boolean) -> Unit) {
+    // Chamado uma vez por frame no modo corpo. `onChange` so e disparado
+    // quando o estado da sobrancelha muda. `onLandmarks` entrega os seis
+    // pontos que a regra atual realmente usa, para o overlay nao confundi-los
+    // com os pontos faciais aproximados do PoseLandmarker.
+    fun step(
+        mpImage: MPImage,
+        timestamp: Long,
+        onChange: (ativo: Boolean) -> Unit,
+        onLandmarks: (pontos: FloatArray?) -> Unit
+    ) {
         faceFrameCounter++
         if (faceFrameCounter % LibrasAnalyzer.FACE_DETECT_STRIDE != 0) return
 
         val faceResult = ensureLoaded()?.detectForVideo(mpImage, timestamp)
+        onLandmarks(extrairPontosDoMarcador(faceResult))
         val sobrancelhaAtiva = lerMarcador(faceResult)
         if (sobrancelhaAtiva != interrogativoAtivo) {
             interrogativoAtivo = sobrancelhaAtiva
             onChange(sobrancelhaAtiva)
         }
+    }
+
+    private fun extrairPontosDoMarcador(faceResult: FaceLandmarkerResult?): FloatArray? {
+        val rosto = faceResult?.faceLandmarks()?.firstOrNull() ?: return null
+        val indices = intArrayOf(
+            LibrasAnalyzer.IDX_BROW_L,
+            LibrasAnalyzer.IDX_BROW_R,
+            LibrasAnalyzer.IDX_EYE_TOP_L,
+            LibrasAnalyzer.IDX_EYE_TOP_R,
+            LibrasAnalyzer.IDX_EYE_OUT_L,
+            LibrasAnalyzer.IDX_EYE_OUT_R
+        )
+        if (indices.any { it !in rosto.indices }) return null
+
+        return FloatArray(indices.size * 2).also { pontos ->
+            indices.forEachIndexed { destino, origem ->
+                pontos[destino * 2] = rosto[origem].x()
+                pontos[destino * 2 + 1] = rosto[origem].y()
+            }
+        }
+    }
+
+    fun reset() {
+        bufferSobrancelha.clear()
+        interrogativoAtivo = false
+        faceFrameCounter = 0
     }
 
     private fun faceOptions(delegate: Delegate) = FaceLandmarkerOptions.builder()

@@ -387,6 +387,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                     onLandmarks = { hands, pose, frameAspect ->
                         onLandmarksDetected(hands, pose, frameAspect)
                     },
+                    onFaceLandmarks = { pontos, frameAspect ->
+                        onFaceLandmarksDetected(pontos, frameAspect)
+                    },
                     onInterrogativo = { ativo -> onInterrogativoAtualizado(ativo) }
                 ).also {
                     it.setModo(modoAtual)
@@ -1063,6 +1066,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     ) {
         if (!linhasAtivas) return
         _binding?.landmarkOverlay?.update(hands, pose, frameAspect)
+    }
+
+    private fun onFaceLandmarksDetected(pontos: FloatArray?, frameAspect: Float) {
+        if (!linhasAtivas) return
+        _binding?.landmarkOverlay?.updateFace(pontos, frameAspect)
     }
 
     private fun onRepeticaoPendente(letra: String?) {

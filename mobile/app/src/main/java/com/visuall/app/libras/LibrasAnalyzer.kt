@@ -40,6 +40,10 @@ class LibrasAnalyzer(
     private val onLandmarks: (
         hands: List<FloatArray>, pose: FloatArray?, frameAspect: Float
     ) -> Unit = { _, _, _ -> },
+    // Pontos faciais usados pelo marcador, desenhados apenas no modo corpo.
+    private val onFaceLandmarks: (
+        pontos: FloatArray?, frameAspect: Float
+    ) -> Unit = { _, _ -> },
     // Sobrancelha levantada (marcador de pergunta) — igual ao Python, entra
     // nos DOIS modos. Chamado só quando o estado muda (não a cada frame).
     private val onInterrogativo: (ativo: Boolean) -> Unit = { }
@@ -490,14 +494,16 @@ class LibrasAnalyzer(
         perfHandNs += SystemClock.elapsedRealtimeNanos() - handStartNs
         handCount = result.landmarks().size
 
-        // Rosto roda nos DOIS modos, igual ao Holistic do Python ("Em AMBOS
-        // os modos o ROSTO entra como marcador não-manual") — ver
-        // FaceMarkerEngine para o throttle de frames e o porte do ler_marcador.
-        val faceStartNs = SystemClock.elapsedRealtimeNanos()
-        faceEngine.step(mpImage, timestamp, onInterrogativo)
-        perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
-
         if (modoAtual == Modo.CORPO) {
+            // Nesta fase o rosto e o marcador de pergunta ficam restritos ao
+            // modo corpo. O callback separado permite desenhar os landmarks
+            // faciais reais sem usar os pontos 0..10 da pose como substitutos.
+            val faceStartNs = SystemClock.elapsedRealtimeNanos()
+            faceEngine.step(mpImage, timestamp, onInterrogativo) { pontos ->
+                onFaceLandmarks(pontos, frameAspect)
+            }
+            perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
+
             val poseDetector = bodyEngine.ensureLoaded()
             if (poseDetector == null) {
                 notificarLetra("-", 0f, "corpo")
@@ -850,6 +856,9 @@ class LibrasAnalyzer(
 
     fun setModo(novoModo: Modo) {
         modoAtual = novoModo
+        faceEngine.reset()
+        onInterrogativo(false)
+        onFaceLandmarks(null, frameAspect)
         bodyEngine.resetTudo()
         resetEstadoAlfabeto()
         // Troca de modo começa uma frase nova (letras e sinais de corpo não se
