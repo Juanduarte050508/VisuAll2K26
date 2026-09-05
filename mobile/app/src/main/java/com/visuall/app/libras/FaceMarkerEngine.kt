@@ -25,8 +25,8 @@ internal class FaceMarkerEngine(private val context: Context) {
     private var faceFrameCounter = 0
 
     // Chamado uma vez por frame no modo corpo. `onChange` so e disparado
-    // quando o estado da sobrancelha muda. `onLandmarks` entrega os seis
-    // pontos que a regra atual realmente usa, para o overlay nao confundi-los
+    // quando o estado da sobrancelha muda. `onLandmarks` entrega pontos reais
+    // do FaceLandmarker para sobrancelhas, olhos, nariz e boca, sem mistura-los
     // com os pontos faciais aproximados do PoseLandmarker.
     fun step(
         mpImage: MPImage,
@@ -48,18 +48,10 @@ internal class FaceMarkerEngine(private val context: Context) {
 
     private fun extrairPontosDoMarcador(faceResult: FaceLandmarkerResult?): FloatArray? {
         val rosto = faceResult?.faceLandmarks()?.firstOrNull() ?: return null
-        val indices = intArrayOf(
-            LibrasAnalyzer.IDX_BROW_L,
-            LibrasAnalyzer.IDX_BROW_R,
-            LibrasAnalyzer.IDX_EYE_TOP_L,
-            LibrasAnalyzer.IDX_EYE_TOP_R,
-            LibrasAnalyzer.IDX_EYE_OUT_L,
-            LibrasAnalyzer.IDX_EYE_OUT_R
-        )
-        if (indices.any { it !in rosto.indices }) return null
+        if (PONTOS_OVERLAY.any { it !in rosto.indices }) return null
 
-        return FloatArray(indices.size * 2).also { pontos ->
-            indices.forEachIndexed { destino, origem ->
+        return FloatArray(PONTOS_OVERLAY.size * 2).also { pontos ->
+            PONTOS_OVERLAY.forEachIndexed { destino, origem ->
                 pontos[destino * 2] = rosto[origem].x()
                 pontos[destino * 2 + 1] = rosto[origem].y()
             }
@@ -141,5 +133,18 @@ internal class FaceMarkerEngine(private val context: Context) {
         runCatching { faceLandmarker?.close() }
             .onFailure { Log.w("FaceMarkerEngine", "Falha ao fechar FaceLandmarker", it) }
         faceLandmarker = null
+    }
+
+    private companion object {
+        // Tres amostras distribuidas ao longo de cada sobrancelha e olho.
+        // Os olhos usam os cantos e a palpebra superior; nao o centro da pupila.
+        val SOBRANCELHA_A = intArrayOf(70, 105, 107)
+        val SOBRANCELHA_B = intArrayOf(300, 334, 336)
+        val OLHO_A = intArrayOf(33, 159, 133)
+        val OLHO_B = intArrayOf(362, 386, 263)
+        val NARIZ = intArrayOf(1)
+        val BOCA = intArrayOf(61, 13, 291, 14)
+        val PONTOS_OVERLAY =
+            SOBRANCELHA_A + SOBRANCELHA_B + OLHO_A + OLHO_B + NARIZ + BOCA
     }
 }
