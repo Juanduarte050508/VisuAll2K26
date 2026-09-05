@@ -99,26 +99,38 @@ internal class FaceMarkerEngine(private val context: Context) {
         }
     }
 
-    // Porta fiel de ler_marcador (app.py): sobrancelha levantada em relação à
-    // distância entre os cantos externos dos olhos (escala invariante à
-    // distância da câmera), suavizada numa janela de JANELA_SOBR frames.
+    // Mede a distancia vertical entre o centro de tres pontos de cada
+    // sobrancelha e o centro de tres pontos do olho correspondente. O valor e
+    // normalizado pela distancia entre os centros dos olhos para nao depender
+    // do tamanho do rosto na imagem e suavizado em JANELA_SOBR amostras.
     private fun lerMarcador(faceResult: FaceLandmarkerResult?): Boolean {
         val rosto = faceResult?.faceLandmarks()?.firstOrNull() ?: return false
-        val maxIdx = maxOf(
-            LibrasAnalyzer.IDX_BROW_L, LibrasAnalyzer.IDX_BROW_R,
-            LibrasAnalyzer.IDX_EYE_TOP_L, LibrasAnalyzer.IDX_EYE_TOP_R,
-            LibrasAnalyzer.IDX_EYE_OUT_L, LibrasAnalyzer.IDX_EYE_OUT_R
-        )
+        val maxIdx = PONTOS_MEDICAO.maxOrNull() ?: return false
         if (rosto.size <= maxIdx) return false
 
-        val dx = rosto[LibrasAnalyzer.IDX_EYE_OUT_L].x() - rosto[LibrasAnalyzer.IDX_EYE_OUT_R].x()
-        val dy = rosto[LibrasAnalyzer.IDX_EYE_OUT_L].y() - rosto[LibrasAnalyzer.IDX_EYE_OUT_R].y()
+        fun centro(indices: IntArray): Centro {
+            var x = 0f
+            var y = 0f
+            indices.forEach { indice ->
+                x += rosto[indice].x()
+                y += rosto[indice].y()
+            }
+            return Centro(x / indices.size, y / indices.size)
+        }
+
+        val centroSobrancelhaA = centro(SOBRANCELHA_A)
+        val centroSobrancelhaB = centro(SOBRANCELHA_B)
+        val centroOlhoA = centro(OLHO_A)
+        val centroOlhoB = centro(OLHO_B)
+
+        val dx = centroOlhoA.x - centroOlhoB.x
+        val dy = centroOlhoA.y - centroOlhoB.y
         val escala = sqrt(dx * dx + dy * dy)
         if (escala < 1e-6f) return false
 
-        val gl = rosto[LibrasAnalyzer.IDX_EYE_TOP_L].y() - rosto[LibrasAnalyzer.IDX_BROW_L].y()
-        val gr = rosto[LibrasAnalyzer.IDX_EYE_TOP_R].y() - rosto[LibrasAnalyzer.IDX_BROW_R].y()
-        bufferSobrancelha.addLast(((gl + gr) / 2f) / escala)
+        val distanciaA = centroOlhoA.y - centroSobrancelhaA.y
+        val distanciaB = centroOlhoB.y - centroSobrancelhaB.y
+        bufferSobrancelha.addLast(((distanciaA + distanciaB) / 2f) / escala)
         while (bufferSobrancelha.size > LibrasAnalyzer.JANELA_SOBR) bufferSobrancelha.removeFirst()
 
         val suavizado = bufferSobrancelha.average().toFloat()
@@ -144,7 +156,10 @@ internal class FaceMarkerEngine(private val context: Context) {
         val OLHO_B = intArrayOf(362, 386, 263)
         val NARIZ = intArrayOf(1)
         val BOCA = intArrayOf(61, 13, 291, 14)
+        val PONTOS_MEDICAO = SOBRANCELHA_A + SOBRANCELHA_B + OLHO_A + OLHO_B
         val PONTOS_OVERLAY =
-            SOBRANCELHA_A + SOBRANCELHA_B + OLHO_A + OLHO_B + NARIZ + BOCA
+            PONTOS_MEDICAO + NARIZ + BOCA
     }
+
+    private data class Centro(val x: Float, val y: Float)
 }
