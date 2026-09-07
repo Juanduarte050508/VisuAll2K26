@@ -32,6 +32,7 @@ internal class FaceMarkerEngine(private val context: Context) {
      * por [LibrasAnalyzer.FACE_DETECT_STRIDE], mas a maquina temporal usa o
      * timestamp real em milissegundos, nao uma contagem de frames.
      */
+    @Synchronized
     fun step(
         mpImage: MPImage,
         timestamp: Long,
@@ -53,6 +54,7 @@ internal class FaceMarkerEngine(private val context: Context) {
         }
     }
 
+    @Synchronized
     fun reset() {
         detector.reset()
         markerVisible = false
@@ -263,6 +265,7 @@ internal class FaceMarkerEngine(private val context: Context) {
 
     private fun Map<String, Category>.score(name: String): Float = this[name]?.score() ?: 0f
 
+    @Synchronized
     fun close() {
         runCatching { faceLandmarker?.close() }
             .onFailure { Log.w("FaceMarkerEngine", "Falha ao fechar FaceLandmarker", it) }
