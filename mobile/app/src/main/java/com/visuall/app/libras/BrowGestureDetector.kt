@@ -33,7 +33,7 @@ internal data class BrowFrameFeatures(
 
 internal enum class BrowRaiseMode { SIDE_A, SIDE_B, EITHER, BOTH }
 
-internal enum class BrowGestureState {
+enum class BrowGestureState {
     NO_FACE,
     CALIBRATING,
     NEUTRAL,
@@ -42,7 +42,7 @@ internal enum class BrowGestureState {
     COOLDOWN
 }
 
-internal enum class BrowDecisionReason {
+enum class BrowDecisionReason {
     NO_FACE,
     MULTIPLE_FACES,
     LANDMARKS_INCOMPLETE,
@@ -59,7 +59,7 @@ internal enum class BrowDecisionReason {
     COOLDOWN
 }
 
-internal data class BrowThresholds(
+data class BrowThresholds(
     val gapEnterA: Float,
     val gapEnterB: Float,
     val gapExitA: Float,
@@ -73,7 +73,7 @@ internal data class BrowThresholds(
     val browDownDelta: Float
 )
 
-internal data class BrowDetection(
+data class BrowDetection(
     val state: BrowGestureState,
     val markerVisible: Boolean,
     val triggered: Boolean,

@@ -44,6 +44,9 @@ class LibrasAnalyzer(
     private val onFaceLandmarks: (
         pontos: FloatArray?, frameAspect: Float
     ) -> Unit = { _, _ -> },
+    // Diagnostico da calibracao e da maquina de estados facial. Tambem fica
+    // restrito ao modo corpo e nao persiste nenhum dado biometrico.
+    private val onFaceDiagnostic: (diagnostic: BrowDetection) -> Unit = { },
     // Sobrancelha levantada (marcador de pergunta) — igual ao Python, entra
     // nos DOIS modos. Chamado só quando o estado muda (não a cada frame).
     private val onInterrogativo: (ativo: Boolean) -> Unit = { }
@@ -252,18 +255,6 @@ class LibrasAnalyzer(
         const val DYNAMIC_TRAINING_FILE_NAME = "visuall_libras_dynamic_phone_dataset.csv"
         val LETRAS_REPETICAO_AUTO        = setOf("S", "R")
 
-        // Marcador de sobrancelha (frase vira pergunta) — portado 1:1 de
-        // m01_visuall_config.py / app.py (ler_marcador). Os índices são da
-        // topologia de 468 pontos do FaceMesh, a mesma usada pelo
-        // FaceLandmarker da Tasks API — não precisou remapear nada.
-        const val LIMIAR_SOBRANCELHA = 0.38f
-        const val JANELA_SOBR = 5
-        const val IDX_BROW_L = 105
-        const val IDX_BROW_R = 334
-        const val IDX_EYE_TOP_L = 159
-        const val IDX_EYE_TOP_R = 386
-        const val IDX_EYE_OUT_L = 33
-        const val IDX_EYE_OUT_R = 263
         // A sobrancelha não muda de estado tão rápido quanto uma letra: rodar
         // o 3º modelo (FaceLandmarker) 1 a cada N frames economiza latência
         // sem atraso perceptível no marcador de pergunta.
@@ -499,9 +490,13 @@ class LibrasAnalyzer(
             // modo corpo. O callback separado permite desenhar os landmarks
             // faciais reais sem usar os pontos 0..10 da pose como substitutos.
             val faceStartNs = SystemClock.elapsedRealtimeNanos()
-            faceEngine.step(mpImage, timestamp, onInterrogativo) { pontos ->
-                onFaceLandmarks(pontos, frameAspect)
-            }
+            faceEngine.step(
+                mpImage = mpImage,
+                timestamp = timestamp,
+                onChange = onInterrogativo,
+                onLandmarks = { pontos -> onFaceLandmarks(pontos, frameAspect) },
+                onDiagnostic = onFaceDiagnostic
+            )
             perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
 
             val poseDetector = bodyEngine.ensureLoaded()
