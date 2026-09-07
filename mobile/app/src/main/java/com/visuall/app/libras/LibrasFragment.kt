@@ -33,6 +33,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 import android.util.Size
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -258,6 +259,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
     }
 
+    @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
     private fun bindCamera() {
         val provider = cameraProvider ?: return
         if (!isAdded || _binding == null) return

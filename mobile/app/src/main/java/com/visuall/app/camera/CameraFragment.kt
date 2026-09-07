@@ -24,6 +24,7 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
@@ -524,6 +525,7 @@ class CameraFragment : Fragment() {
     //
     // O rótulo sai da medição, não de um "0.6x" fixo: é a razão entre os
     // campos de visão, que é exatamente o "quantas vezes" da câmera.
+    @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
     private fun descobrirUltraWide(provider: ProcessCameraProvider, atual: CameraInfo) {
         if (idUltraWide != null) return
         val manager = context?.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
@@ -559,6 +561,7 @@ class CameraFragment : Fragment() {
     }
 
     // Seletor que prende o bind numa câmera física específica.
+    @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
     private fun seletorDaCamera(id: String): CameraSelector =
         CameraSelector.Builder()
             .addCameraFilter { infos ->
