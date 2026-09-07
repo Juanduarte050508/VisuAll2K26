@@ -390,6 +390,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                     onFaceLandmarks = { pontos, frameAspect ->
                         onFaceLandmarksDetected(pontos, frameAspect)
                     },
+                    onFaceDiagnostic = { diagnostic -> onFaceDiagnosticUpdated(diagnostic) },
                     onInterrogativo = { ativo -> onInterrogativoAtualizado(ativo) }
                 ).also {
                     it.setModo(modoAtual)
@@ -707,6 +708,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.landmarkOverlay.isVisible = linhasAtivas
             if (!linhasAtivas) binding.landmarkOverlay.clear()
             binding.btnLines.text = if (linhasAtivas) "LINHAS: ON" else "LINHAS: OFF"
+            updateFaceDiagnosticVisibility()
         }
 
         binding.btnFlip.setOnClickListener {
@@ -807,6 +809,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
         binding.btnModeAlphabet.alpha = 1f
         binding.btnModeBody.alpha = 1f
+        updateFaceDiagnosticVisibility()
+        if (modoAtual != LibrasAnalyzer.Modo.CORPO) {
+            interrogativoAtivo = false
+            binding.tvQuestionMarker.isVisible = false
+        }
     }
 
     // ── Hold da lixeira ────────────────────────────────────────────────────
@@ -1041,10 +1048,91 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             if (_binding == null) return@runOnUiThread
             if (interrogativoAtivo == ativo) return@runOnUiThread
             interrogativoAtivo = ativo
+            binding.tvQuestionMarker.isVisible = ativo && modoAtual == LibrasAnalyzer.Modo.CORPO
+            if (ativo && modoAtual == LibrasAnalyzer.Modo.CORPO) {
+                binding.tvQuestionMarker.announceForAccessibility("Pergunta detectada")
+            }
             if (!isLandscapeHudCompact()) {
                 binding.tvPhrase.text = fraseExibida()
             }
         }
+    }
+
+    private fun onFaceDiagnosticUpdated(diagnostic: BrowDetection) {
+        activity?.runOnUiThread {
+            if (_binding == null || modoAtual != LibrasAnalyzer.Modo.CORPO) return@runOnUiThread
+            binding.tvFaceDiagnostic.text = formatFaceDiagnostic(diagnostic)
+            updateFaceDiagnosticVisibility()
+        }
+    }
+
+    private fun updateFaceDiagnosticVisibility() {
+        if (_binding == null) return
+        binding.tvFaceDiagnostic.isVisible =
+            modoAtual == LibrasAnalyzer.Modo.CORPO && linhasAtivas
+    }
+
+    private fun formatFaceDiagnostic(d: BrowDetection): String {
+        val threshold = d.thresholds
+        val progress = (d.calibrationProgress * 100f).toInt().coerceIn(0, 100)
+        val face = when (d.faceCount) {
+            0 -> "SEM ROSTO"
+            1 -> "OK >=0.50"
+            else -> "${d.faceCount} ROSTOS"
+        }
+        return buildString {
+            append("ROSTO ").append(face)
+            append("  ").append(stateLabel(d.state)).append(' ').append(progress).append("%\n")
+            append("GEO  A ").append(faceValue(d.filteredGapA))
+            append("  B ").append(faceValue(d.filteredGapB)).append('\n')
+            append("BASE A ").append(faceValue(d.baselineGapA))
+            append("  B ").append(faceValue(d.baselineGapB)).append('\n')
+            append("DELTA A ").append(faceValue(d.gapDeltaA))
+            append('/').append(faceValue(threshold?.gapEnterA))
+            append("  B ").append(faceValue(d.gapDeltaB))
+            append('/').append(faceValue(threshold?.gapEnterB)).append('\n')
+            append("IA   A ").append(faceValue(d.browOuterUpA))
+            append("  B ").append(faceValue(d.browOuterUpB))
+            append("  C ").append(faceValue(d.browInnerUp)).append('\n')
+            append("SCORE A ").append(faceValue(d.sideScoreA))
+            append("  B ").append(faceValue(d.sideScoreB)).append("  alvo 1.00\n")
+            append("POSE P ").append(faceAngle(d.pitchDegrees))
+            append(" Y ").append(faceAngle(d.yawDegrees))
+            append(" R ").append(faceAngle(d.rollDegrees)).append('\n')
+            append("DECISAO ").append(reasonLabel(d.reason))
+        }
+    }
+
+    private fun faceValue(value: Float?): String =
+        value?.let { String.format(Locale.US, "%.3f", it) } ?: "---"
+
+    private fun faceAngle(value: Float?): String =
+        value?.let { String.format(Locale.US, "%+.0f", it) } ?: "--"
+
+    private fun stateLabel(state: BrowGestureState): String = when (state) {
+        BrowGestureState.NO_FACE -> "SEM_ROSTO"
+        BrowGestureState.CALIBRATING -> "CALIBRANDO"
+        BrowGestureState.NEUTRAL -> "NEUTRO"
+        BrowGestureState.CANDIDATE_RAISE -> "CANDIDATO"
+        BrowGestureState.RAISED -> "LEVANTADA"
+        BrowGestureState.COOLDOWN -> "ESPERA"
+    }
+
+    private fun reasonLabel(reason: BrowDecisionReason): String = when (reason) {
+        BrowDecisionReason.NO_FACE -> "rosto ausente"
+        BrowDecisionReason.MULTIPLE_FACES -> "mais de um rosto"
+        BrowDecisionReason.LANDMARKS_INCOMPLETE -> "pontos incompletos"
+        BrowDecisionReason.POSE_EXCESSIVE -> "cabeca fora do angulo"
+        BrowDecisionReason.CALIBRATING -> "aprendendo seu neutro"
+        BrowDecisionReason.UNSTABLE_CALIBRATION -> "mantenha o rosto parado"
+        BrowDecisionReason.BLINK -> "piscar rejeitado"
+        BrowDecisionReason.EYES_WIDE_WITHOUT_BROW -> "olhos abertos sem sobrancelha"
+        BrowDecisionReason.BROW_DOWN -> "sobrancelha franzida"
+        BrowDecisionReason.BELOW_THRESHOLD -> "abaixo do limiar"
+        BrowDecisionReason.WAITING_DWELL -> "sustente a sobrancelha"
+        BrowDecisionReason.RAISED -> "pergunta detectada"
+        BrowDecisionReason.WAITING_RELEASE -> "aguardando baixar"
+        BrowDecisionReason.COOLDOWN -> "evitando repeticao"
     }
 
     private fun onSemMao() {
