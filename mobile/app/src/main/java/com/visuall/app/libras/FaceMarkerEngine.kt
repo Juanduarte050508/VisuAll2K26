@@ -24,7 +24,6 @@ internal class FaceMarkerEngine(private val context: Context) {
     private var faceLandmarker: FaceLandmarker? = null
     private var faceModelIndisponivel = false
     private val detector = BrowGestureDetector(mode = BrowRaiseMode.BOTH)
-    private var markerVisible = false
     private var faceFrameCounter = 0
 
     /**
@@ -36,7 +35,7 @@ internal class FaceMarkerEngine(private val context: Context) {
     fun step(
         mpImage: MPImage,
         timestamp: Long,
-        onChange: (ativo: Boolean) -> Unit,
+        onDetected: () -> Unit,
         onLandmarks: (pontos: FloatArray?) -> Unit,
         onDiagnostic: (BrowDetection) -> Unit
     ) {
@@ -48,16 +47,14 @@ internal class FaceMarkerEngine(private val context: Context) {
 
         val detection = detector.update(extractFeatures(faceResult, timestamp))
         onDiagnostic(detection)
-        if (detection.markerVisible != markerVisible) {
-            markerVisible = detection.markerVisible
-            onChange(markerVisible)
-        }
+        // O gesto e um EVENTO: depois de confirmado, a interrogacao pertence
+        // a frase e nao some quando a pessoa abaixa a sobrancelha.
+        if (detection.triggered) onDetected()
     }
 
     @Synchronized
     fun reset() {
         detector.reset()
-        markerVisible = false
         faceFrameCounter = 0
     }
 

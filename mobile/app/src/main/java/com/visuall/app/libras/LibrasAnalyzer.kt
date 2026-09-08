@@ -47,8 +47,8 @@ class LibrasAnalyzer(
     // Diagnostico da calibracao e da maquina de estados facial. Tambem fica
     // restrito ao modo corpo e nao persiste nenhum dado biometrico.
     private val onFaceDiagnostic: (diagnostic: BrowDetection) -> Unit = { },
-    // Sobrancelha levantada (marcador de pergunta) — igual ao Python, entra
-    // nos DOIS modos. Chamado só quando o estado muda (não a cada frame).
+    // Interrogacao confirmada pelo gesto facial no modo corpo. `true` e um
+    // evento que fica preso a frase; `false` so sai de apagar/limpar/resetar.
     private val onInterrogativo: (ativo: Boolean) -> Unit = { }
 ) : ImageAnalysis.Analyzer {
 
@@ -493,7 +493,9 @@ class LibrasAnalyzer(
             faceEngine.step(
                 mpImage = mpImage,
                 timestamp = timestamp,
-                onChange = onInterrogativo,
+                onDetected = {
+                    if (sentence.marcarInterrogativa()) onInterrogativo(true)
+                },
                 onLandmarks = { pontos -> onFaceLandmarks(pontos, frameAspect) },
                 onDiagnostic = onFaceDiagnostic
             )
@@ -559,6 +561,7 @@ class LibrasAnalyzer(
             if ((agora - tempoInicioEsticado) >= TEMPO_PRA_LIMPAR
                 && (agora - ultimoTempoLimpar) > 2_000L) {
                 sentence.limpar(); commitGate.liberarRepeticao()
+                onInterrogativo(false)
                 tempoInicioEsticado = 0L; ultimoTempoLimpar = agora
                 onRepeticaoPendente(null)
                 onFraseUpdate("")
@@ -823,6 +826,7 @@ class LibrasAnalyzer(
         if (limpeza.limpar) {
             sentence.limpar()
             bodyEngine.limparTokens()
+            onInterrogativo(false)
             onFraseUpdate("")
         }
         // NÃO interrompe a captura só porque a barra começou a encher. Foi o
@@ -904,6 +908,10 @@ class LibrasAnalyzer(
         onFraseUpdate(sentence.frase)
     }
     fun apagarUltima() {
+        if (sentence.removerInterrogacao()) {
+            onInterrogativo(false)
+            return
+        }
         if (modoAtual == Modo.CORPO) {
             // No corpo apagamos o último SINAL (token) e re-traduzimos.
             val novaFrase = bodyEngine.apagarUltimoToken() ?: return
@@ -922,6 +930,7 @@ class LibrasAnalyzer(
         commitGate.liberarRepeticao()
         bodyEngine.limparTokens()
         onRepeticaoPendente(null)
+        onInterrogativo(false)
         onFraseUpdate(sentence.frase)
     }
 

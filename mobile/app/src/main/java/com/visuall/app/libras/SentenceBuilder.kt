@@ -16,6 +16,11 @@ internal class SentenceBuilder {
     var frase: String = ""
         private set
 
+    // Interrogacao confirmada pelo gesto facial. Fica separada do texto para
+    // o tradutor do modo corpo poder reconstruir a frase sem perder o sinal.
+    var interrogativa: Boolean = false
+        private set
+
     // Letra reconhecida que seria uma repetição da última e por isso está
     // esperando confirmação explícita (botão REPETIR). "" = nada pendente.
     var letraRepetidaPendente: String = ""
@@ -69,6 +74,20 @@ internal class SentenceBuilder {
         letraRepetidaPendente = ""
     }
 
+    /** Fixa a interrogacao ate uma acao explicita de apagar/limpar. */
+    fun marcarInterrogativa(): Boolean {
+        if (interrogativa) return false
+        interrogativa = true
+        return true
+    }
+
+    /** A lixeira remove primeiro a pontuacao, como faria num texto normal. */
+    fun removerInterrogacao(): Boolean {
+        if (!interrogativa) return false
+        interrogativa = false
+        return true
+    }
+
     /** Apaga o último caractere. Devolve false se a frase já estava vazia. */
     fun apagarUltima(): Boolean {
         if (frase.isEmpty()) return false
@@ -79,6 +98,7 @@ internal class SentenceBuilder {
 
     fun limpar() {
         frase = ""
+        interrogativa = false
         letraRepetidaPendente = ""
     }
 

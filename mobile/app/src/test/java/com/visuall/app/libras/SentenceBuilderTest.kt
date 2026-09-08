@@ -159,9 +159,30 @@ class SentenceBuilderTest {
     fun `limpar zera frase e pendencia`() {
         val s = builder("A")
         s.aceitarLetra("A")
+        s.marcarInterrogativa()
         s.limpar()
         assertEquals("", s.frase)
+        assertFalse(s.interrogativa)
         assertEquals("", s.letraRepetidaPendente)
+    }
+
+    @Test
+    fun `interrogacao confirmada permanece ao mudar a frase`() {
+        val s = builder("O", "I")
+        assertTrue(s.marcarInterrogativa())
+        assertFalse(s.marcarInterrogativa())
+        s.definir("VOCE AJUDAR")
+        assertTrue(s.interrogativa)
+    }
+
+    @Test
+    fun `lixeira remove interrogacao antes do texto`() {
+        val s = builder("O", "I")
+        s.marcarInterrogativa()
+        assertTrue(s.removerInterrogacao())
+        assertFalse(s.interrogativa)
+        assertEquals("OI", s.frase)
+        assertFalse(s.removerInterrogacao())
     }
 
     @Test
