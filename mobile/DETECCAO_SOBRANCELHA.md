@@ -96,7 +96,8 @@ BrowGestureDetector (Kotlin puro)
           |
           v
 LibrasFragment
-  |- marcador `?` independente da frase
+  |- estado interrogativo persistente na frase
+  |- simbolo `?` informativo e nao clicavel
   `- painel de diagnostico quando CORPO + LINHAS esta ativo
 ```
 
@@ -160,7 +161,7 @@ NO_FACE -> CALIBRATING -> NEUTRAL -> CANDIDATE_RAISE
 | Suavizacao EMA | tau 110 ms | Reduz jitter sem atraso longo |
 | Sustentacao para entrar | 280 ms | Rejeita picos e piscadas |
 | Sustentacao para sair | 240 ms | Evita oscilacao na borda |
-| Visibilidade minima | 700 ms | O simbolo permanece legivel |
+| Estado RAISED minimo | 700 ms | Estabiliza o evento; o simbolo confirmado permanece depois |
 | Cooldown | 900 ms | Impede repeticao imediata |
 | Perda breve de rosto | 350 ms | Evita flicker por uma falha do detector |
 | Reset sem rosto | 2.000 ms | Nova pessoa recebe novo baseline |
@@ -184,7 +185,8 @@ o rosto. O sistema precisa continuar sem mostrar `?`.
 - A ativacao e anunciada uma vez pela acessibilidade.
 - Callbacks de texto/visibilidade entram na main thread; o overlay usa
   `postInvalidate()`.
-- Perda breve do rosto conserva o marcador; perda longa limpa estado/baseline.
+- Perda breve do rosto conserva o estado do detector; perda longa reinicia a
+  calibracao, mas nao apaga uma interrogacao ja confirmada na frase.
 - Troca de modo reinicia a maquina; `close()` fecha detectores e o executor e
   encerrado no ciclo de vida do fragment.
 - A camera frontal e espelhada antes da inferencia, de acordo com o dataset
@@ -192,10 +194,11 @@ o rosto. O sistema precisa continuar sem mostrar `?`.
 - O app esta travado em retrato no manifesto. Portanto, paisagem nao faz parte
   do comportamento executavel atual, embora exista recurso `layout-land`.
 
-O marcador e apenas visual nesta fase. Transformar interrogacao em propriedade
-semantica da frase e repassa-la para TTS/oculos e um passo separado, pois exige
-decidir quando a pergunta e confirmada e como o protocolo dos oculos representa
-esse estado.
+A interrogacao confirmada agora e uma propriedade do `SentenceBuilder`, separada
+dos caracteres para sobreviver a retraducao do modo corpo. O `?` permanece ao
+abaixar a sobrancelha; a lixeira o remove antes do texto, e limpar/trocar de modo
+tambem o remove. Repassar esse estado para TTS e protocolo dos oculos continua
+sendo um passo separado.
 
 ## 8. Desempenho e observabilidade
 
@@ -289,8 +292,8 @@ mesma pessoa.
    estado mudar de `CALIBRANDO` para `NEUTRO`.
 5. Levante as duas sobrancelhas e segure por cerca de meio segundo. O painel
    deve passar por `CANDIDATO` e `LEVANTADA`; o `?` deve aparecer sozinho.
-6. Abaixe: depois da visibilidade minima, deve passar por `AGUARDANDO SAIDA`,
-   `COOLDOWN` e voltar a `NEUTRO`.
+6. Abaixe: o detector deve passar por `AGUARDANDO SAIDA`, `COOLDOWN` e voltar a
+   `NEUTRO`, mas o `?` deve continuar na tela ate a lixeira/limpeza.
 7. Tente piscar, arregalar os olhos e executar os movimentos de falso cabeca.
    Fotografe o painel se algo ativar indevidamente.
 8. Envie uma captura neutra e outra levantada contendo o painel, ou os videos
@@ -307,8 +310,8 @@ Ainda dependem de aparelho/dados reais:
 - verificar franja, oculos, luz baixa e diferentes anatomias;
 - decidir se pergunta unilateral sera aceita; hoje o modo e `BOTH`;
 - avaliar se uma regressao/logistica pequena sobre as features supera a regra;
-- posteriormente representar interrogacao como dado semantico na frase, TTS e
-  protocolo dos oculos, em vez de transmitir apenas o caractere visual.
+- posteriormente transmitir o estado interrogativo ja separado para TTS e para
+  o protocolo dos oculos, em vez de transmitir apenas o caractere visual.
 
 Nao se deve treinar um modelo final somente com uma pessoa: ele pode memorizar
 rosto, iluminacao e camera. Primeiro se exportam features anonimizadas por frame

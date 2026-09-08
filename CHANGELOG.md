@@ -13,6 +13,13 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
 
 ## Não lançado
 
+- **A interrogacao sumia quando a sobrancelha abaixava** — o detector agora
+  entrega um evento de pergunta e o `SentenceBuilder` guarda esse estado ate
+  uma acao explicita. A lixeira remove primeiro o `?`; limpar a frase ou trocar
+  de modo tambem o remove. O indicador separado perdeu fundo, elevacao, foco e
+  clique para nao parecer um botao. Status: **corrigido, aguardando validacao no
+  aparelho**.
+
 - **Deteccao temporal de sobrancelhas no modo CORPO** — a comparacao fixa de
   distancia foi substituida por baseline neutro pessoal (2 s, minimo 10
   amostras), normalizacao pela distancia interocular, EMA de 110 ms e escore
