@@ -13,6 +13,12 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
 
 ## Não lançado
 
+- **Interrogacao tambem no Alfabeto** — o `FaceMarkerEngine` agora roda a cada
+  cinco frames nos dois modos. O evento e o `?` atendem Corpo e Alfabeto; pontos
+  vermelhos e painel tecnico continuam exclusivos do Corpo para nao poluir a
+  tela do Alfabeto. Nenhum limiar facial ou de mao foi alterado. Status:
+  **implementado, aguardando validacao no aparelho**.
+
 - **A frase sumia ao alternar Corpo/Alfabeto** — a troca agora reinicia somente
   os estados temporais dos reconhecedores. O texto e a interrogacao pertencem a
   uma unica conversa e permanecem na tela. Como o tradutor corporal recalcula

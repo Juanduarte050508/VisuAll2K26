@@ -1,8 +1,8 @@
 # Deteccao de sobrancelha levantada
 
 Auditoria e plano de validacao da primeira versao testavel no Android. O escopo
-atual e deliberadamente restrito ao modo **CORPO** e ao gesto bilateral (as duas
-sobrancelhas). O objetivo desta etapa e obter medidas reais no Xiaomi 15 antes
+atual atende **CORPO e ALFABETO** e usa o gesto bilateral (as duas sobrancelhas).
+Pontos e diagnostico tecnico continuam exclusivos do Corpo. O objetivo desta etapa e obter medidas reais no Xiaomi 15 antes
 de transformar valores provisórios em parametros definitivos.
 
 ## 1. Diagnostico do codigo original
@@ -12,7 +12,7 @@ O fluxo Android existente e:
 ```text
 CameraX ImageAnalysis (RGBA, ~640x480, KEEP_ONLY_LATEST)
   -> LibrasAnalyzer.prepararBitmap (reduz, rotaciona e espelha a frontal)
-  -> HandLandmarker + PoseLandmarker + FaceLandmarker no modo CORPO
+  -> HandLandmarker + FaceLandmarker nos dois modos (+ PoseLandmarker no CORPO)
   -> extracao de features
   -> classificadores/estado temporal
   -> callbacks para LibrasFragment
@@ -179,7 +179,7 @@ o rosto. O sistema precisa continuar sem mostrar `?`.
 
 ## 7. Interface e ciclo de vida
 
-- O `?` agora aparece mesmo quando a frase esta vazia, somente no modo CORPO.
+- O `?` aparece mesmo quando a frase esta vazia, nos modos Corpo e Alfabeto.
 - A UI so muda quando `markerVisible` muda; isso evita atualizacoes e flicker a
   cada frame.
 - A ativacao e anunciada uma vez pela acessibilidade.
