@@ -812,10 +812,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnModeAlphabet.alpha = 1f
         binding.btnModeBody.alpha = 1f
         updateFaceDiagnosticVisibility()
-        // O estado interrogativo pertence a frase e sobrevive a troca de
-        // reconhecedor. O simbolo isolado so ocupa a camera no modo Corpo.
-        binding.tvQuestionMarker.isVisible =
-            interrogativoAtivo && modoAtual == LibrasAnalyzer.Modo.CORPO
+        // O estado interrogativo pertence a frase e atende os dois modos.
+        binding.tvQuestionMarker.isVisible = interrogativoAtivo
         binding.tvPhrase.text = fraseExibida()
     }
 
@@ -1051,8 +1049,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             if (_binding == null) return@runOnUiThread
             if (interrogativoAtivo == ativo) return@runOnUiThread
             interrogativoAtivo = ativo
-            binding.tvQuestionMarker.isVisible = ativo && modoAtual == LibrasAnalyzer.Modo.CORPO
-            if (ativo && modoAtual == LibrasAnalyzer.Modo.CORPO) {
+            binding.tvQuestionMarker.isVisible = ativo
+            if (ativo) {
                 binding.tvQuestionMarker.announceForAccessibility("Pergunta detectada")
             }
             if (!isLandscapeHudCompact()) {

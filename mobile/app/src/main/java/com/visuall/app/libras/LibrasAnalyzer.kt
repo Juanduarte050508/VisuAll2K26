@@ -485,21 +485,25 @@ class LibrasAnalyzer(
         perfHandNs += SystemClock.elapsedRealtimeNanos() - handStartNs
         handCount = result.landmarks().size
 
+        // A pergunta por sobrancelha atende Corpo e Alfabeto. Pontos e painel
+        // tecnico permanecem exclusivos do Corpo para nao poluir o Alfabeto.
+        val faceStartNs = SystemClock.elapsedRealtimeNanos()
+        faceEngine.step(
+            mpImage = mpImage,
+            timestamp = timestamp,
+            onDetected = {
+                if (sentence.marcarInterrogativa()) onInterrogativo(true)
+            },
+            onLandmarks = { pontos ->
+                if (modoAtual == Modo.CORPO) onFaceLandmarks(pontos, frameAspect)
+            },
+            onDiagnostic = { diagnostic ->
+                if (modoAtual == Modo.CORPO) onFaceDiagnostic(diagnostic)
+            }
+        )
+        perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
+
         if (modoAtual == Modo.CORPO) {
-            // Nesta fase o rosto e o marcador de pergunta ficam restritos ao
-            // modo corpo. O callback separado permite desenhar os landmarks
-            // faciais reais sem usar os pontos 0..10 da pose como substitutos.
-            val faceStartNs = SystemClock.elapsedRealtimeNanos()
-            faceEngine.step(
-                mpImage = mpImage,
-                timestamp = timestamp,
-                onDetected = {
-                    if (sentence.marcarInterrogativa()) onInterrogativo(true)
-                },
-                onLandmarks = { pontos -> onFaceLandmarks(pontos, frameAspect) },
-                onDiagnostic = onFaceDiagnostic
-            )
-            perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
 
             val poseDetector = bodyEngine.ensureLoaded()
             if (poseDetector == null) {

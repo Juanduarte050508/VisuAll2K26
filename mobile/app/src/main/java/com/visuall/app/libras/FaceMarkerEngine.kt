@@ -17,7 +17,8 @@ import kotlin.math.sqrt
 
 /**
  * Extrai sinais do FaceLandmarker e entrega a decisao temporal ao
- * [BrowGestureDetector]. Roda apenas no modo CORPO, por decisao do produto.
+ * [BrowGestureDetector]. O evento de pergunta atende Corpo e Alfabeto; os
+ * pontos e o diagnostico continuam sendo uma escolha da interface.
  */
 internal class FaceMarkerEngine(private val context: Context) {
 
