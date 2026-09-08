@@ -13,10 +13,17 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
 
 ## Não lançado
 
+- **A frase sumia ao alternar Corpo/Alfabeto** — a troca agora reinicia somente
+  os estados temporais dos reconhecedores. O texto e a interrogacao pertencem a
+  uma unica conversa e permanecem na tela. Como o tradutor corporal recalcula
+  todos os sinais da sessao atual, ele substitui apenas esse trecho e preserva
+  o que veio do Alfabeto ou de uma passagem anterior pelo Corpo. Status:
+  **corrigido, aguardando validacao no aparelho**.
+
 - **A interrogacao sumia quando a sobrancelha abaixava** — o detector agora
   entrega um evento de pergunta e o `SentenceBuilder` guarda esse estado ate
-  uma acao explicita. A lixeira remove primeiro o `?`; limpar a frase ou trocar
-  de modo tambem o remove. O indicador separado perdeu fundo, elevacao, foco e
+  uma acao explicita. A lixeira remove primeiro o `?`, e limpar a frase tambem
+  o remove. O indicador separado perdeu fundo, elevacao, foco e
   clique para nao parecer um botao. Status: **corrigido, aguardando validacao no
   aparelho**.
 

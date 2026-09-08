@@ -187,8 +187,8 @@ o rosto. O sistema precisa continuar sem mostrar `?`.
   `postInvalidate()`.
 - Perda breve do rosto conserva o estado do detector; perda longa reinicia a
   calibracao, mas nao apaga uma interrogacao ja confirmada na frase.
-- Troca de modo reinicia a maquina; `close()` fecha detectores e o executor e
-  encerrado no ciclo de vida do fragment.
+- Troca de modo reinicia a maquina facial, mas preserva texto e interrogacao;
+  `close()` fecha detectores e o executor e encerrado no ciclo de vida.
 - A camera frontal e espelhada antes da inferencia, de acordo com o dataset
   existente; o overlay recebe coordenadas nesse mesmo espaco.
 - O app esta travado em retrato no manifesto. Portanto, paisagem nao faz parte
@@ -196,8 +196,8 @@ o rosto. O sistema precisa continuar sem mostrar `?`.
 
 A interrogacao confirmada agora e uma propriedade do `SentenceBuilder`, separada
 dos caracteres para sobreviver a retraducao do modo corpo. O `?` permanece ao
-abaixar a sobrancelha; a lixeira o remove antes do texto, e limpar/trocar de modo
-tambem o remove. Repassar esse estado para TTS e protocolo dos oculos continua
+abaixar a sobrancelha e ao trocar de modo; a lixeira o remove antes do texto, e
+limpar a frase tambem o remove. Repassar esse estado para TTS e protocolo dos oculos continua
 sendo um passo separado.
 
 ## 8. Desempenho e observabilidade
