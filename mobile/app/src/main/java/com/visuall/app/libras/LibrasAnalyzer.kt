@@ -848,22 +848,22 @@ class LibrasAnalyzer(
 
         val novaFrase = bodyEngine.processarFrame(bodyFrame, agora, ::notificarLetra, ::notificarFeedback)
         if (novaFrase != null) {
-            sentence.definir(novaFrase)
+            sentence.definirTrechoCorpo(novaFrase)
             onFraseUpdate(sentence.frase)
         }
     }
 
     fun setModo(novoModo: Modo) {
+        val modoAnterior = modoAtual
         modoAtual = novoModo
         faceEngine.reset()
-        onInterrogativo(false)
         onFaceLandmarks(null, frameAspect)
+        if (modoAnterior == Modo.CORPO) sentence.encerrarTrechoCorpo()
         bodyEngine.resetTudo()
         resetEstadoAlfabeto()
-        // Troca de modo começa uma frase nova (letras e sinais de corpo não se
-        // misturam na mesma frase).
-        sentence.limpar()
-        onFraseUpdate("")
+        if (novoModo == Modo.CORPO) sentence.iniciarTrechoCorpo()
+        // A frase e a interrogacao pertencem a conversa, nao ao reconhecedor.
+        // Trocar de modo reinicia apenas os estados temporais de cada modelo.
         onRepeticaoPendente(null)
         // resetEstadoAlfabeto() (acima) já zera o cache de dedup da letra;
         // falta só o do feedback, pra troca de modo reafirmar a mensagem na
@@ -914,10 +914,14 @@ class LibrasAnalyzer(
         }
         if (modoAtual == Modo.CORPO) {
             // No corpo apagamos o último SINAL (token) e re-traduzimos.
-            val novaFrase = bodyEngine.apagarUltimoToken() ?: return
-            sentence.definir(novaFrase)
-            onFraseUpdate(sentence.frase)
-            return
+            val novaFrase = bodyEngine.apagarUltimoToken()
+            if (novaFrase != null) {
+                sentence.definirTrechoCorpo(novaFrase)
+                onFraseUpdate(sentence.frase)
+                return
+            }
+            // Sem sinal na sessao corporal atual, a lixeira continua podendo
+            // apagar o texto compartilhado que veio do modo anterior.
         }
         if (!sentence.apagarUltima()) return
         commitGate.liberarRepeticao()

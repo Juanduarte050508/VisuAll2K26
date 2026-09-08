@@ -21,6 +21,11 @@ internal class SentenceBuilder {
     var interrogativa: Boolean = false
         private set
 
+    // Texto que ja existia ao entrar no modo corpo. A traducao corporal e
+    // recalculada a cada novo sinal, por isso substituimos somente o trecho da
+    // sessao atual e nunca o que veio do alfabeto ou de uma sessao anterior.
+    private var prefixoTrechoCorpo: String? = null
+
     // Letra reconhecida que seria uma repetição da última e por isso está
     // esperando confirmação explícita (botão REPETIR). "" = nada pendente.
     var letraRepetidaPendente: String = ""
@@ -88,10 +93,33 @@ internal class SentenceBuilder {
         return true
     }
 
+    fun iniciarTrechoCorpo() {
+        prefixoTrechoCorpo = frase.trimEnd()
+        letraRepetidaPendente = ""
+    }
+
+    fun definirTrechoCorpo(traducao: String) {
+        val prefixo = prefixoTrechoCorpo ?: frase.trimEnd().also {
+            prefixoTrechoCorpo = it
+        }
+        val trecho = traducao.trim()
+        frase = when {
+            prefixo.isBlank() -> trecho
+            trecho.isBlank() -> prefixo
+            else -> "$prefixo $trecho"
+        }
+        letraRepetidaPendente = ""
+    }
+
+    fun encerrarTrechoCorpo() {
+        prefixoTrechoCorpo = null
+    }
+
     /** Apaga o último caractere. Devolve false se a frase já estava vazia. */
     fun apagarUltima(): Boolean {
         if (frase.isEmpty()) return false
         frase = frase.dropLast(1)
+        if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = frase.trimEnd()
         letraRepetidaPendente = ""
         return true
     }
@@ -99,6 +127,7 @@ internal class SentenceBuilder {
     fun limpar() {
         frase = ""
         interrogativa = false
+        if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = ""
         letraRepetidaPendente = ""
     }
 

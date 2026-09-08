@@ -812,10 +812,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnModeAlphabet.alpha = 1f
         binding.btnModeBody.alpha = 1f
         updateFaceDiagnosticVisibility()
-        if (modoAtual != LibrasAnalyzer.Modo.CORPO) {
-            interrogativoAtivo = false
-            binding.tvQuestionMarker.isVisible = false
-        }
+        // O estado interrogativo pertence a frase e sobrevive a troca de
+        // reconhecedor. O simbolo isolado so ocupa a camera no modo Corpo.
+        binding.tvQuestionMarker.isVisible =
+            interrogativoAtivo && modoAtual == LibrasAnalyzer.Modo.CORPO
+        binding.tvPhrase.text = fraseExibida()
     }
 
     // ── Hold da lixeira ────────────────────────────────────────────────────

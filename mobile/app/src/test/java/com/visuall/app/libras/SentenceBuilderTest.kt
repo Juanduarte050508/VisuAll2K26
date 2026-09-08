@@ -205,4 +205,39 @@ class SentenceBuilderTest {
         s.definir("EU AJUDAR VOCE")
         assertEquals("EU AJUDAR VOCE", s.frase)
     }
+
+    @Test
+    fun `trecho do corpo preserva texto que veio do alfabeto`() {
+        val s = builder("O", "I")
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        assertEquals("OI A pessoa", s.frase)
+
+        // O tradutor recalcula a sessao corporal inteira. Deve substituir o
+        // trecho anterior, nao duplicar nem apagar o prefixo OI.
+        s.definirTrechoCorpo("A pessoa surda")
+        assertEquals("OI A pessoa surda", s.frase)
+    }
+
+    @Test
+    fun `voltar ao corpo abre novo trecho sem apagar o anterior`() {
+        val s = builder("O", "I")
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        s.encerrarTrechoCorpo()
+
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("Voce ajudar")
+        assertEquals("OI A pessoa Voce ajudar", s.frase)
+    }
+
+    @Test
+    fun `limpar durante trecho corporal nao restaura prefixo antigo`() {
+        val s = builder("O", "I")
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        s.limpar()
+        s.definirTrechoCorpo("Voce")
+        assertEquals("Voce", s.frase)
+    }
 }
