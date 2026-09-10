@@ -295,6 +295,20 @@
             android:padding="13dp"
             android:src="@drawable/ic_history"
             app:tint="@color/text_primary"
+            app:layout_constraintEnd_toStartOf="@id/btn_reply_landscape"
+            app:layout_constraintTop_toTopOf="@id/btn_reply_exit"
+            app:layout_constraintBottom_toBottomOf="@id/btn_reply_exit" />
+
+        <ImageView
+            android:id="@+id/btn_reply_landscape"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/vf_bg_action_btn"
+            android:contentDescription="Girar resposta para horizontal"
+            android:padding="11dp"
+            android:src="@drawable/ic_screen_landscape"
+            app:tint="@color/text_primary"
             app:layout_constraintEnd_toStartOf="@id/btn_reply_exit"
             app:layout_constraintTop_toTopOf="@id/btn_reply_exit"
             app:layout_constraintBottom_toBottomOf="@id/btn_reply_exit" />

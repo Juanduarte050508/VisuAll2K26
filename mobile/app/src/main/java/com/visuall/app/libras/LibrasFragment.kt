@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.ColorStateList
@@ -150,6 +151,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     // Texto da resposta atual. Vivia no tv_reply da bolha; com a bolha fora da
     // tela ele passa a ser estado do fragmento, sem view espelhando.
     private var respostaAtual = ""
+    private var respostaForcouPaisagem = false
+    private var orientacaoAntesDaResposta: Int? = null
 
 
     // Acabamos de abrir uma activity nossa (o reconhecedor de fala)? Se sim, o
@@ -539,6 +542,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun applyHudLayout() {
+        if (painelRespostaAberto && isLandscapeHudCompact()) {
+            removeLandscapeHud()
+            setPortraitHudVisible(false)
+            binding.replyPanel.isVisible = true
+            atualizarBotaoResponder()
+            return
+        }
+
         if (!isLandscapeHudCompact()) {
             applyPortraitHudLayout()
             return
@@ -603,7 +614,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // resultado da fala ja ter preenchido a caixa. A conversa na tela
         // precisa durar ate alguem apagar, nao ate a proxima troca de layout.
         binding.phraseBubble.isVisible = visible && fraseBase.isNotBlank()
-        binding.replyPanel.isVisible = visible && painelRespostaAberto
+        binding.replyPanel.isVisible =
+            painelRespostaAberto && (visible || respostaForcouPaisagem)
         atualizarBotaoResponder()
     }
 
@@ -679,6 +691,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        _binding?.root?.post {
+            if (_binding == null) return@post
+            applyPreviewAspectRatio()
+            applyHudLayout()
+        }
+    }
+
     // ── Botões ─────────────────────────────────────────────────────────────
     private fun setupButtons() {
         binding.btnExitLibras.setOnClickListener { exitLibrasMode() }
@@ -705,6 +726,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
 
         binding.btnReplyAudio.setOnClickListener { startSpeechReply() }
+        binding.btnReplyLandscape.setOnClickListener { toggleReplyOrientation() }
 
         // PRONTO guarda o texto e esconde o teclado, mas NAO sai da tela cheia:
         // e exatamente aqui que o celular e virado pra pessoa surda ler.
@@ -960,7 +982,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun openReplyPanel(focus: Boolean = false) {
-        if (isLandscapeHudCompact()) {
+        if (isLandscapeHudCompact() && !respostaForcouPaisagem) {
             binding.replyPanel.isVisible = false
             painelRespostaAberto = false
             Toast.makeText(requireContext(), "Resposta ocultada no HUD compacto", Toast.LENGTH_SHORT).show()
@@ -974,6 +996,64 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.etReply.setSelection(respostaAtual.length)
         }
         if (focus) focusReplyText()
+    }
+
+    private fun toggleReplyOrientation() {
+        if (!painelRespostaAberto || !binding.replyPanel.isVisible) return
+        if (respostaForcouPaisagem) {
+            restoreReplyOrientation()
+            binding.root.post {
+                if (_binding == null) return@post
+                applyPreviewAspectRatio()
+                applyHudLayout()
+            }
+            return
+        }
+
+        val host = activity ?: return
+        val orientacaoAnterior = (orientacaoAntesDaResposta ?: host.requestedOrientation)
+            .takeUnless { it == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+            ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        saveReplyToScreen()
+        binding.etReply.clearFocus()
+        hideKeyboard()
+
+        runCatching {
+            host.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }.onSuccess {
+            orientacaoAntesDaResposta = orientacaoAnterior
+            respostaForcouPaisagem = true
+            applyHudLayout()
+        }.onFailure { error ->
+            Log.w("LibrasFragment", "Nao consegui girar a resposta para paisagem", error)
+            Toast.makeText(
+                requireContext(),
+                "Nao consegui girar a tela neste celular",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun restoreReplyOrientation() {
+        if (!respostaForcouPaisagem && orientacaoAntesDaResposta == null) return
+        val host = activity
+        val orientacaoAnterior = orientacaoAntesDaResposta
+            ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        respostaForcouPaisagem = false
+        orientacaoAntesDaResposta = null
+
+        host?.let { safeHost ->
+            runCatching {
+                safeHost.requestedOrientation = orientacaoAnterior
+            }.onFailure { error ->
+                Log.w("LibrasFragment", "Nao consegui restaurar a orientacao da resposta", error)
+                runCatching {
+                    safeHost.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
+            }
+        }
     }
 
     private fun focusReplyText() {
@@ -996,6 +1076,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         atualizarBotaoResponder()
         binding.etReply.clearFocus()
         hideKeyboard()
+        restoreReplyOrientation()
+        binding.root.post {
+            if (_binding == null) return@post
+            applyPreviewAspectRatio()
+            applyHudLayout()
+        }
     }
 
     /**
@@ -1524,6 +1610,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private fun exitLibrasMode() {
         if (!isAdded || view == null) return
+        restoreReplyOrientation()
         val navController = findNavController()
         if (navController.currentDestination?.id != R.id.nav_libras) return
 
@@ -1541,6 +1628,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         super.onDestroyView()
         // Brilho e tela acesa sao da JANELA, nao do fragmento: sem devolver
         // aqui, sair do modo Libras deixaria o app inteiro escuro e sem apagar.
+        restoreReplyOrientation()
         desbloquearTela()
         manterTelaAcesa(false)
         // Antes de tudo: as threads dos oculos seguram uma referencia ao

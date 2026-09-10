@@ -37,13 +37,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- O app inteiro roda em retrato. A camera depende de a preview e os
-             guias de enquadramento estarem no mesmo referencial: girando o
-             aparelho, a imagem ia pra paisagem e as molduras ficavam onde
-             estavam. E "sensor" ainda ignorava o bloqueio de rotacao do
-             sistema. Ver currentTargetRotation() nos fragments de camera. -->
+        <!-- O app roda em retrato, exceto quando o modo resposta força
+             paisagem temporariamente. A camera depende de a preview e os guias
+             de enquadramento estarem no mesmo referencial: girando o aparelho,
+             a imagem ia pra paisagem e as molduras ficavam onde estavam. E
+             "sensor" ainda ignorava o bloqueio de rotacao do sistema. Ver
+             currentTargetRotation() nos fragments de camera. -->
         <activity
             android:name=".ui.MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
