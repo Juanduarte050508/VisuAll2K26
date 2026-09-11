@@ -15,7 +15,10 @@
 
 param(
     [string]$Porta = "",
-    [switch]$Limpo
+    [switch]$Limpo,
+    # Teste de radio: a camera nao liga e o /stream manda quadros gerados na
+    # propria placa. Ver TESTE_SEM_CAMERA no .ino. Depois, grave de novo sem.
+    [switch]$SemCamera
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,7 +42,17 @@ $fqbn = "esp32:esp32:esp32s3:" + (@(
     "FlashSize=16M",
     "FlashMode=qio",
     "PartitionScheme=huge_app",     # 3MB pro app; camera + Wi-Fi nao cabem no padrao de 1,2MB
-    "CDCOnBoot=cdc"                 # serial pela USB nativa da placa
+    # Serial pela porta UART (a do chip conversor), e nao pela USB OTG.
+    #
+    # A placa tem duas USB-C. Com "cdc" o serial ia pela OTG, que e a USB do
+    # proprio ESP32-S3 -- e essa porta SOME do Windows toda vez que a placa
+    # reinicia. As mensagens do boot (camera achada ou nao, PSRAM, brownout)
+    # saem uma vez so, no primeiro segundo, e se perdiam antes de o monitor
+    # serial reconectar. Pela UART a porta COM continua la enquanto a placa
+    # reinicia: abre o monitor, aperta RESET, e aparece tudo desde a primeira
+    # linha. De bonus, as mensagens da ROM, de antes do nosso codigo, tambem
+    # saem por ela.
+    "CDCOnBoot=default"
 ) -join ",")
 
 Write-Host "sketch: $sketch"
@@ -48,6 +61,13 @@ Write-Host ""
 
 $argumentos = @("compile", "--fqbn", $fqbn, "--warnings", "all")
 if ($Limpo) { $argumentos += "--clean" }
+if ($SemCamera) {
+    # compiler.cpp.extra_flags vem vazio do core. build.extra_flags, nao: e onde
+    # a placa ja poe o CDCOnBoot, e sobrescrever apagaria.
+    $argumentos += @("--build-property", "compiler.cpp.extra_flags=-DTESTE_SEM_CAMERA=1")
+    Write-Host "modo..: TESTE SEM CAMERA (depois grave de novo sem -SemCamera)"
+    Write-Host ""
+}
 $argumentos += $sketch
 
 & $cli @argumentos

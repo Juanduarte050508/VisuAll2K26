@@ -383,6 +383,10 @@ cd oculos\firmware
 .\compilar.ps1 -Porta COM5      # compila e grava (precisa da placa)
 ```
 
+Ligue a placa no PC pela USB-C marcada **UART** (ela tem duas). Pela outra, a
+**USB OTG**, a porta some a cada reinício da placa e as mensagens do boot se
+perdem.
+
 Precisa do core do ESP32 instalado uma vez (~1 GB):
 
 ```powershell
