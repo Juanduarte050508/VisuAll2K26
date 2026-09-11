@@ -60,9 +60,9 @@ class EnderecoDosOculosTest {
      */
     @Test
     fun `os valores batem com o firmware`() {
-        assertEquals("REDE_NOME no oculos_camera.ino", "VisuAll-Oculos", EnderecoDosOculos.REDE)
-        assertEquals("REDE_SENHA no oculos_camera.ino", "visuall2026", EnderecoDosOculos.SENHA)
-        assertEquals("IP_PLACA no oculos_camera.ino", "192.168.4.1", EnderecoDosOculos.IP)
+        assertEquals("REDE_NOME no firmware.ino", "VisuAll-Oculos", EnderecoDosOculos.REDE)
+        assertEquals("REDE_SENHA no firmware.ino", "visuall2026", EnderecoDosOculos.SENHA)
+        assertEquals("IP_PLACA no firmware.ino", "192.168.4.1", EnderecoDosOculos.IP)
         assertTrue("a senha precisa ter 8+ caracteres, exigencia do WPA2",
             EnderecoDosOculos.SENHA.length >= 8)
     }

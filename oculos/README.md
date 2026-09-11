@@ -14,19 +14,48 @@ Esta pasta é a resposta para isso: uma câmera minúscula presa na armação de
 
 ---
 
+## O que tem nesta pasta
+
+```text
+oculos/
+  README.md          este guia, do zero aos óculos funcionando
+  firmware/          o programa que roda na placa
+    firmware.ino       o código (é o arquivo que a Arduino IDE abre)
+    camera_pins.h      em quais pinos da placa a câmera está ligada
+    compilar.ps1       compila e grava com um comando
+    README.md          compilar, gravar, diagnosticar, e o problema do calor
+  mock/              uma imitação da placa, que roda no PC
+    mock.py            pega a webcam e manda a imagem igual à placa
+    README.md          como rodar, e o que ele imita
+```
+
+Duas palavras que aparecem o tempo todo:
+
+- **Firmware** é o programa gravado dentro da placa. Ela liga e ele já roda
+  sozinho, sem PC nenhum.
+- **Mock** quer dizer imitação. O `mock.py` finge ser a placa: roda no PC e
+  manda a imagem da webcam exatamente como a placa manda. Serve para mexer no
+  app sem ter a placa na mão.
+
+Se aparecer uma pasta `__pycache__`, é cache do Python. Pode apagar; ela nunca
+vai para o git.
+
+---
+
 ## Sumário
 
 1. [O que já funciona](#1-o-que-já-funciona)
 2. [O que você precisa ter](#2-o-que-você-precisa-ter)
-3. [Parte 1 — pegar o código](#3-parte-1--pegar-o-código)
-4. [Parte 2 — o dublê dos óculos (sem placa nenhuma)](#4-parte-2--o-dublê-dos-óculos-sem-placa-nenhuma)
-5. [Parte 3 — instalar o app no celular](#5-parte-3--instalar-o-app-no-celular)
-6. [Parte 4 — ver a webcam do PC no celular](#6-parte-4--ver-a-webcam-do-pc-no-celular)
-7. [Parte 5 — o modo de bolso](#7-parte-5--o-modo-de-bolso)
-8. [Parte 6 — o firmware da placa](#8-parte-6--o-firmware-da-placa)
+3. [Pegar o código](#3-pegar-o-código)
+4. [O mock: a placa de mentira, no PC](#4-o-mock-a-placa-de-mentira-no-pc)
+5. [Instalar o app no celular](#5-instalar-o-app-no-celular)
+6. [Ver a imagem do mock no celular](#6-ver-a-imagem-do-mock-no-celular)
+7. [O modo de bolso](#7-o-modo-de-bolso)
+8. [A placa de verdade](#8-a-placa-de-verdade)
 9. [Quando der errado](#9-quando-der-errado)
 10. [Como conferir cada elo da corrente](#10-como-conferir-cada-elo-da-corrente)
-11. [Decisões de projeto](#11-decisões-de-projeto)
+11. [Testar o Wi-Fi sem internet](#11-testar-o-wi-fi-sem-internet-sem-derrubar-a-casa)
+12. [Decisões de projeto](#12-decisões-de-projeto)
 
 ---
 
@@ -34,16 +63,18 @@ Esta pasta é a resposta para isso: uma câmera minúscula presa na armação de
 
 | # | Etapa | Precisa da placa? | Estado |
 |---|---|---|---|
-| 1 | Dublê da câmera rodando no PC | não | **pronto** |
+| 1 | Mock rodando no PC | não | **pronto** |
 | 2 | O app recebendo imagem pela rede | não | **pronto** |
 | 3 | Forçar o Wi-Fi sem internet | não | **pronto** |
-| 4 | Firmware compilando | não (só gravar precisa) | **pronto** |
-| 5 | Entrar na rede dos óculos pelo app | não | **pronto** |
-| 6 | Modo de bolso (tela travada) | não | **pronto** |
-| — | Gravar e ligar a placa de verdade | **sim** | esperando o hardware |
+| 4 | Modo de bolso (tela travada) | não | **pronto** |
+| 5 | Firmware compilado e gravado na placa | sim | **pronto** |
+| 6 | O app entrando na rede da placa e recebendo a imagem | sim | **pronto**, a 22 quadros por segundo |
+| 7 | Calor da câmera | sim | **em andamento**: transmitindo, a imagem estraga depois de uns 50 s |
+| 8 | Bateria, carregador e montagem na armação | sim | ainda não começou |
 
 Tudo que está marcado como pronto foi testado num celular de verdade, não só
-compilado. O que falta é físico.
+compilado. O calor está explicado no
+[README do firmware](firmware/README.md#calor).
 
 ---
 
@@ -53,8 +84,8 @@ compilado. O que falta é físico.
 
 - Um **PC com Windows** (o projeto foi feito nele; em Linux ou Mac quase tudo
   funciona igual, mudam os comandos de firewall).
-- Uma **webcam** — a do notebook serve. Sem webcam também dá: o dublê tem um
-  gerador de imagem embutido, veja a Parte 2.
+- Uma **webcam** — a do notebook serve. Sem webcam também dá: o mock tem um
+  gerador de imagem embutido, veja a seção 4.
 - Um **celular Android** com a mesma rede Wi-Fi do PC.
 - Um **cabo USB** para ligar o celular no PC.
 
@@ -63,7 +94,7 @@ compilado. O que falta é físico.
 | Programa | Para quê | Onde |
 |---|---|---|
 | **Git** | baixar o código | https://git-scm.com |
-| **Python 3.9 ou mais novo** | rodar o dublê da câmera | https://python.org |
+| **Python 3.9 ou mais novo** | rodar o mock | https://python.org |
 | **Android Studio** | compilar o app e falar com o celular | https://developer.android.com/studio |
 | **Arduino IDE 2.x** | compilar o firmware da placa | https://arduino.cc/en/software |
 
@@ -71,7 +102,7 @@ O Android Studio já traz junto o `adb` (o programa que conversa com o celular)
 e um Java próprio. A Arduino IDE já traz o `arduino-cli`. Você não precisa
 instalar nada disso separado.
 
-### O hardware dos óculos (quando chegar)
+### O hardware dos óculos
 
 | Peça | Detalhe |
 |---|---|
@@ -93,47 +124,45 @@ instalar nada disso separado.
 
 ---
 
-## 3. Parte 1 — pegar o código
+## 3. Pegar o código
 
 Abra o **PowerShell** (tecla Windows, digite "powershell", Enter) e:
 
 ```powershell
 git clone https://github.com/Juanduarte050508/VisuAll.git
 cd VisuAll
-git checkout esp32-camera-remota
 ```
 
-A última linha é importante: este trabalho vive num **ramo** separado chamado
-`esp32-camera-remota`, não no principal. Se você pular essa linha, a pasta
-`oculos/` nem vai existir.
+A pasta `oculos/` vem junto, e todos os comandos deste guia partem da pasta
+`VisuAll`.
 
-Para conferir que deu certo:
-
-```powershell
-git branch --show-current
-```
-
-Tem que responder `esp32-camera-remota`.
+> Se `oculos\mock` ou `oculos\firmware\firmware.ino` não existirem no que você
+> baixou, o trabalho mais novo ainda está no ramo dos óculos. Entre nele com
+> `git checkout esp32-camera-remota`.
 
 ---
 
-## 4. Parte 2 — o dublê dos óculos (sem placa nenhuma)
+## 4. O mock: a placa de mentira, no PC
 
 ### Por que existe
 
 O trabalho difícil deste projeto não é o firmware da placa: é o app aprender a
 receber imagem **pela rede** em vez da câmera do celular. Esperar a placa chegar
-para só então começar deixaria o app parado.
+para só então começar teria deixado o app parado.
 
-O `mock_esp32_cam.py` resolve isso. Ele pega a webcam do PC e serve a imagem
-**exatamente no mesmo formato** que o firmware vai servir — mesmo protocolo,
-mesma resolução, mesmos cabeçalhos. Do ponto de vista do app, é indistinguível.
-Quando a placa chegar, muda só o endereço.
+O `mock/mock.py` resolve isso. Ele pega a webcam do PC e serve a imagem
+**exatamente no mesmo formato** que o firmware serve — mesmo protocolo, mesma
+resolução, mesmos cabeçalhos. Do ponto de vista do app, é indistinguível: trocar
+o mock pela placa muda só o endereço.
 
-Chamamos ele de "dublê" porque é isso mesmo: um dublê faz a cena perigosa no
-lugar do ator, e ninguém na plateia percebe.
+Dá para pensar nele como um dublê: faz a cena no lugar do ator, e ninguém na
+plateia percebe. Mesmo com a placa pronta ele continua útil, porque não
+esquenta, não depende de bateria e roda com a webcam do notebook.
 
-### 2.1 — Instalar o que ele precisa
+A referência do mock (opções, o que ele imita e o que não) está no
+[README dele](mock/README.md). Aqui vai o passo a passo.
+
+### 4.1 — Instalar o que ele precisa
 
 ```powershell
 pip install opencv-python numpy
@@ -145,12 +174,12 @@ Se o `pip` não for reconhecido, use o Python pelo caminho completo:
 py -m pip install opencv-python numpy
 ```
 
-### 2.2 — Rodar
+### 4.2 — Rodar
 
 Da pasta `VisuAll`:
 
 ```powershell
-python oculos\mock_esp32_cam.py
+python oculos\mock\mock.py
 ```
 
 A saída certa é assim:
@@ -175,7 +204,7 @@ Deixe essa janela aberta. Fechando ela, o dublê para.
 **Não tem webcam?** Use:
 
 ```powershell
-python oculos\mock_esp32_cam.py --sintetico
+python oculos\mock\mock.py --sintetico
 ```
 
 Ele gera uma imagem colorida com uma barra andando e um contador. Não serve para
@@ -183,14 +212,14 @@ testar reconhecimento — não tem mão nenhuma ali —, mas serve para testar *
 cano**: se o app recebe, decodifica e mostra essa imagem, vai receber as da
 placa do mesmo jeito. O contador na tela deixa óbvio se o vídeo travou.
 
-### 2.3 — Conferir no navegador do PC
+### 4.3 — Conferir no navegador do PC
 
 Abra `http://localhost:8080/` no navegador. Você deve ver a imagem da webcam.
 
 Se ver, **o dublê está bom** e qualquer problema daqui para frente é de rede ou
 do app. Já é uma informação valiosa.
 
-### 2.4 — Liberar o firewall do Windows
+### 4.4 — Liberar o firewall do Windows
 
 O Windows bloqueia conexões vindas de fora por padrão, então o celular não
 alcança o PC até você liberar. Abra o PowerShell **como administrador** (clique
@@ -202,7 +231,7 @@ New-NetFirewallRule -DisplayName "VisuAll mock ESP32" -Direction Inbound -Protoc
 
 Isso é uma vez só. Depois nunca mais.
 
-### 2.5 — Conferir no celular
+### 4.5 — Conferir no celular
 
 No navegador do **celular**, abra o endereço que o dublê mostrou (aquele com
 `192.168.`). Se a imagem da webcam aparecer, a rede está boa e você pode ir para
@@ -212,9 +241,9 @@ Se não aparecer, veja a seção [Quando der errado](#9-quando-der-errado).
 
 ---
 
-## 5. Parte 3 — instalar o app no celular
+## 5. Instalar o app no celular
 
-### 3.1 — Preparar o celular
+### 5.1 — Preparar o celular
 
 Isso é padrão de Android, não é coisa nossa:
 
@@ -243,7 +272,7 @@ A resposta certa tem uma linha com o número do seu aparelho e a palavra
 `device`. Se disser `unauthorized`, a caixa de permissão não foi aceita no
 celular.
 
-### 3.2 — Dizer onde está o SDK do Android
+### 5.2 — Dizer onde está o SDK do Android
 
 **Este passo é obrigatório num clone novo, e é onde quase todo mundo tropeça.**
 
@@ -267,7 +296,7 @@ depois disso a linha de comando funciona para sempre.
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 ```
 
-### 3.3 — Compilar e instalar
+### 5.3 — Compilar e instalar
 
 ```powershell
 cd mobile
@@ -303,9 +332,9 @@ grande porque carrega os modelos de reconhecimento dentro dele.
 
 ---
 
-## 6. Parte 4 — ver a webcam do PC no celular
+## 6. Ver a imagem do mock no celular
 
-Com o dublê rodando e o app instalado:
+Com o mock rodando e o app instalado:
 
 1. Abra o **VisuAll** no celular
 2. Entre no **modo Libras**
@@ -345,7 +374,7 @@ O app usa o endereço para escolher entre dois comportamentos bem diferentes:
 
 ---
 
-## 7. Parte 5 — o modo de bolso
+## 7. O modo de bolso
 
 No uso de verdade o celular vai para o bolso e os óculos continuam vendo. Isso
 cria dois problemas:
@@ -373,21 +402,12 @@ sozinho o tempo todo; um movimento longo e deliberado não.
 
 ---
 
-## 8. Parte 6 — o firmware da placa
+## 8. A placa de verdade
 
-Está tudo em [`firmware/`](firmware/), com README próprio. Resumo:
+Tudo sobre o firmware está em [`firmware/`](firmware/), com
+[README próprio](firmware/README.md). O caminho, do começo:
 
-```powershell
-cd oculos\firmware
-.\compilar.ps1                  # só compila (não precisa da placa)
-.\compilar.ps1 -Porta COM5      # compila e grava (precisa da placa)
-```
-
-Ligue a placa no PC pela USB-C marcada **UART** (ela tem duas). Pela outra, a
-**USB OTG**, a porta some a cada reinício da placa e as mensagens do boot se
-perdem.
-
-Precisa do core do ESP32 instalado uma vez (~1 GB):
+### 8.1 — Instalar o core do ESP32 (uma vez, ~1 GB)
 
 ```powershell
 arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
@@ -397,20 +417,82 @@ Se o `arduino-cli` não for reconhecido, ele vem dentro da Arduino IDE:
 
 ```powershell
 $cli = "$env:LOCALAPPDATA\Programs\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe"
+& $cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 ```
 
-O `compilar.ps1` acha ele sozinho.
+O `compilar.ps1` acha o `arduino-cli` sozinho; só este passo precisa do caminho.
 
-Quando ligada, a placa cria a rede:
+### 8.2 — Ligar a placa no PC
+
+A placa tem duas USB-C. Use a marcada **UART**. Pela outra, a **USB OTG**, a
+porta some a cada reinício da placa e as mensagens do boot se perdem.
+
+Para descobrir a porta, rode isto antes e depois de ligar o cabo:
+
+```powershell
+[System.IO.Ports.SerialPort]::GetPortNames()
+```
+
+A que apareceu é a placa. No Gerenciador de Dispositivos ela fica em **Portas
+(COM e LPT)**, como `USB-Enhanced-SERIAL CH343 (COM8)`. O número muda de PC
+para PC, e às vezes de uma entrada USB para outra; nos exemplos abaixo, troque
+`COM8` pelo seu.
+
+### 8.3 — Compilar e gravar
+
+```powershell
+cd oculos\firmware
+.\compilar.ps1                  # só compila (não precisa da placa)
+.\compilar.ps1 -Porta COM8      # compila e grava
+```
+
+Se a gravação falhar: segure **BOOT**, toque em **RESET**, solte **BOOT** e
+rode de novo.
+
+### 8.4 — Ver o que a placa diz
+
+Na Arduino IDE: escolha a porta em **Ferramentas → Porta** e abra
+**Ferramentas → Monitor Serial**, em 115200. Ou pelo terminal:
+
+```powershell
+arduino-cli monitor -p COM8 -c baudrate=115200
+```
+
+Aperte **RESET** na placa. O boot certo é assim:
 
 ```
-rede...: VisuAll-Oculos     senha: visuall2026
+motivo do boot: 1
+sensor detectado: PID 0x5640  (OV5640=0x5640, OV2640=0x26, OV3660=0x3660)
+camera dormindo (ninguem recebendo imagem)
+
+rede...: VisuAll-Oculos   senha: visuall2026
 no app.: http://192.168.4.1/stream
+no nav.: http://192.168.4.1/
+wifi...: canal 1  banda 20 MHz  potencia 20.00 dBm
+camera.: clock 20 MHz  forca do pino 0  PLL x90 /2  VCO 900 MHz  saida 180 MHz
 ```
 
-O [README do firmware](firmware/README.md) explica em detalhe a opção de
-compilação que mais dá dor de cabeça (`PSRAM=opi`) e como descobrir se o
-modelo de pinos da câmera é o certo para a sua placa.
+Feche o monitor antes de gravar de novo: os dois não usam a porta ao mesmo
+tempo. O [README do firmware](firmware/README.md) explica o que as linhas
+querem dizer.
+
+### 8.5 — Ver a imagem da placa no app
+
+1. No app, entre no modo Libras e toque no **ícone de olho** (ou segure o ícone,
+   se já houver outro endereço salvo). Use o endereço
+   `http://192.168.4.1/stream`.
+2. O Android pergunta se pode entrar na rede `VisuAll-Oculos`: confirme. A
+   conexão vale só para o VisuAll; o celular continua com a internet de sempre
+   para o resto.
+3. A imagem aparece em alguns segundos, e o monitor serial passa a mostrar
+   `camera acordada (stream comecou)`.
+
+Deixe o celular a uns 50 cm da placa. Colado nela, a imagem engasga.
+
+**A câmera esquenta transmitindo**, e depois de uns 50 s a imagem começa a
+estragar. Ela só trabalha enquanto o app recebe imagem: saindo do modo óculos,
+ela dorme e esfria. Medições e o que já foi tentado:
+[Calor](firmware/README.md#calor).
 
 ---
 
@@ -494,6 +576,19 @@ A tela do celular bloqueou por inatividade. Enquanto testa:
 & $adb shell "svc power stayon usb"     # mantém acesa no cabo
 & $adb shell "svc power stayon false"   # devolve ao normal
 ```
+
+### A imagem da placa trava, ou o app diz que ninguém atende
+
+O monitor serial da placa mostra, a cada 5 s, os quadros por segundo, o sinal do
+celular, e como cada stream acabou. O
+[README do firmware](firmware/README.md#diagnóstico-do-stream) ensina a ler.
+
+### A imagem da placa fica clara, escura ou verde
+
+- **Depois de uns 50 s transmitindo:** é o calor. Veja
+  [Calor](firmware/README.md#calor).
+- **Com a câmera fria, voltando ao normal com um toque:** o suspeito é o cabo
+  flat mal encaixado. Desligue a placa e reencaixe o flat.
 
 ---
 
@@ -591,10 +686,9 @@ Para quem for ler ou mexer no código.
 
 ```
 oculos/
-  mock_esp32_cam.py            o dublê da câmera
-  firmware/
-    oculos_camera/*.ino        o que roda na placa
-    compilar.ps1               compila e grava
+  firmware/firmware.ino        o que roda na placa
+  firmware/compilar.ps1        compila e grava
+  mock/mock.py                 a imitação da placa, no PC
 
 mobile/app/src/main/java/com/visuall/app/oculos/
   MjpegReader.kt               entende o formato do vídeo
@@ -640,7 +734,8 @@ cd mobile
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-São 183, e os desta parte são 54. Todos rodam sem celular e sem placa.
+Os desta parte ficam em `mobile/app/src/test/java/com/visuall/app/oculos/`.
+Todos rodam sem celular e sem placa.
 
 Um hábito que vale copiar: **todo teste importante foi conferido quebrando o
 código de propósito**. Um teste que passa não prova nada até você ver ele

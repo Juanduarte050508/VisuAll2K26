@@ -18,7 +18,7 @@ São **três** frentes de trabalho, cada uma com o seu próprio guia:
 |---|---|---|
 | `mobile/` | O aplicativo Android. É ele que reconhece, escreve e fala. Roda no aparelho com MediaPipe Tasks, ONNX Runtime e TFLite. | [mobile/README.md](mobile/README.md) |
 | `computer/` | O lado PC: o reconhecedor de mesa em Python, a interface web, as ferramentas de treino, os datasets e os modelos. É aqui que os modelos nascem. | [computer/README.md](computer/README.md) |
-| `oculos/` | A câmera dos óculos: um ESP32-S3-CAM preso na armação, o firmware dele, e um dublê que roda no PC para desenvolver **sem a placa**. | [oculos/README.md](oculos/README.md) |
+| `oculos/` | A câmera dos óculos: um ESP32-S3-CAM preso na armação. Em `oculos/firmware/` está o programa da placa; em `oculos/mock/`, uma imitação dela que roda no PC para desenvolver **sem a placa**. | [oculos/README.md](oculos/README.md) |
 
 O caminho de uma letra, de ponta a ponta:
 
@@ -79,14 +79,21 @@ Detalhes: [computer/README.md](computer/README.md) e
 
 ### Quero mexer nos óculos
 
-Dá para fazer tudo **sem ter a placa**. O dublê roda no PC, usa a webcam e fala
-o mesmo protocolo do firmware:
+Dá para fazer quase tudo **sem ter a placa**. O mock (`oculos/mock/`) roda no
+PC, usa a webcam e fala o mesmo protocolo do firmware:
 
 ```powershell
-python oculos\mock_esp32_cam.py
+python oculos\mock\mock.py
 ```
 
 Ele mostra um endereço; é esse endereço que se digita no app, no botão do olho.
+
+Com a placa, o firmware (`oculos/firmware/`) compila e grava com um comando:
+
+```powershell
+cd oculos\firmware
+.\compilar.ps1 -Porta COM8
+```
 
 Passo a passo do zero, escrito para quem nunca mexeu com isso:
 [oculos/README.md](oculos/README.md).

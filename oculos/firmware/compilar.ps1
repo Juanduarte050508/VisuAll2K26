@@ -23,7 +23,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$sketch = Join-Path $PSScriptRoot "oculos_camera"
+# O sketch e esta propria pasta: o Arduino exige que o .ino tenha o nome da
+# pasta em que esta, e por isso o arquivo se chama firmware.ino.
+$sketch = $PSScriptRoot
 
 # A IDE 2.x traz o arduino-cli embutido; usar o dela evita pedir mais uma
 # instalacao a quem so quer compilar.

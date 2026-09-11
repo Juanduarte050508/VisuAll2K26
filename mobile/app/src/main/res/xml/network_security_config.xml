@@ -25,7 +25,7 @@
 
     Escopo: liberado pra tudo de proposito. O endereco dos oculos e digitado
     pela pessoa e muda de rede pra rede (192.168.4.1 na placa, o IP do PC
-    quando se testa com o esp32/mock_esp32_cam.py). Prender a lista a um IP
+    quando se testa com o oculos/mock/mock.py). Prender a lista a um IP
     faria o app quebrar sozinho na proxima rede, e nao ha o que proteger.
 -->
 <network-security-config>

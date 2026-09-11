@@ -1,18 +1,18 @@
-"""Dubl~e do ESP32-S3-CAM: serve um stream MJPEG igual ao dos oculos.
+"""Mock (duble) da camera dos oculos: serve um stream MJPEG igual ao da placa.
 
 Por que existe: o app precisa aprender a receber imagem pela REDE em vez da
-camera do celular, e isso e a maior parte do trabalho. Esperar a placa chegar
-pra so entao comecar deixaria o app parado. Este script fala exatamente o mesmo
-protocolo que o firmware CameraWebServer do ESP32 vai falar -- mesmo formato
+camera do celular, e isso e a maior parte do trabalho. Esperar a placa pra so
+entao comecar deixaria o app parado. Este script fala exatamente o mesmo
+protocolo que o firmware dos oculos (oculos/firmware) -- mesmo formato
 multipart, mesma resolucao, mesmo cabecalho -- entao o app nao sabe a diferenca.
 
-Quando a placa chegar, muda so o endereco: o codigo do app continua igual.
+Trocar o mock pela placa muda so o endereco: o codigo do app continua igual.
 
-Uso:
-    python mock_esp32_cam.py                 # webcam, se houver; senao sintetico
-    python mock_esp32_cam.py video.mp4       # um video em loop
-    python mock_esp32_cam.py --sintetico     # forca o gerador, sem camera
-    python mock_esp32_cam.py --porta 8081
+Uso (da pasta VisuAll):
+    python oculos/mock/mock.py                 # webcam, se houver; senao sintetico
+    python oculos/mock/mock.py video.mp4       # um video em loop
+    python oculos/mock/mock.py --sintetico     # forca o gerador, sem camera
+    python oculos/mock/mock.py --porta 8081
 
 No navegador (PC ou celular):
     http://<IP_DO_PC>:8080/         pagina de teste, pra confirmar que funciona
@@ -35,7 +35,7 @@ import numpy as np
 LARGURA, ALTURA = 320, 240
 FPS = 15
 QUALIDADE_JPEG = 88          # 0-100 do OpenCV; ~ o "quality 12" do esp_camera
-BOUNDARY = "123456789000000000000987654321"   # o mesmo do CameraWebServer
+BOUNDARY = "123456789000000000000987654321"   # a mesma FRONTEIRA do firmware.ino
 
 
 def _abre_captura(fonte):
@@ -301,7 +301,7 @@ def main():
     Handler.difusor = Difusor(criar_fonte)
     if not Handler.difusor.espera_primeiro():
         print("nenhum quadro em %d segundos; abortando." % 120)
-        print("  tente:  python mock_esp32_cam.py --sintetico")
+        print("  tente:  python oculos/mock/mock.py --sintetico")
         print("  (nao usa camera nenhuma e serve pra testar o app do mesmo jeito)")
         return 1
 

@@ -1,8 +1,8 @@
 # Firmware dos óculos
 
-O que roda na placa: cria a própria rede Wi-Fi e serve a câmera em MJPEG, no
-mesmo formato do `oculos/mock_esp32_cam.py`. Do lado do app não muda nada além
-do endereço.
+**Firmware** é o programa gravado dentro da placa. Este aqui faz uma coisa só:
+cria a própria rede Wi-Fi e manda a imagem da câmera por ela, no mesmo formato
+do mock (`oculos/mock/mock.py`). Do lado do app não muda nada além do endereço.
 
 ```
 rede....: VisuAll-Oculos     senha: visuall2026
@@ -15,13 +15,37 @@ nem de nada instalado no lugar — que é o requisito do projeto. O celular entr
 nessa rede e fala direto com a placa. Do lado do app isso já está resolvido:
 ver `RedeDosOculos`, que impede o Android de fugir de uma rede sem internet.
 
+## O que tem nesta pasta
+
+| Arquivo | O que é |
+|---|---|
+| `firmware.ino` | o programa da placa; é o arquivo que se abre na Arduino IDE |
+| `camera_pins.h` | em quais pinos a câmera está ligada (cópia do core do ESP32) |
+| `compilar.ps1` | compila e grava com um comando só |
+| `README.md` | este guia |
+
+O `.ino` se chama `firmware.ino` porque o Arduino exige que ele tenha o nome da
+pasta em que está.
+
+## Como está
+
+- **Funciona:** grava, cria a rede, e o app recebe a imagem a 22 quadros por
+  segundo.
+- **Em andamento:** transmitindo, a câmera esquenta e a imagem estraga depois de
+  uns 50 s. Ver [Calor](#calor).
+- **Não começou:** bateria, carregador e montagem na armação.
+
 ## Compilar
 
 ```powershell
 .\compilar.ps1                  # só compila
-.\compilar.ps1 -Porta COM5      # compila e grava
+.\compilar.ps1 -Porta COM8      # compila e grava (troque pela porta da sua placa)
 .\compilar.ps1 -Limpo           # recompila do zero
 ```
+
+Para achar a porta, rode `[System.IO.Ports.SerialPort]::GetPortNames()` antes e
+depois de ligar o cabo: a que apareceu é a placa. No Gerenciador de
+Dispositivos ela aparece como `USB-Enhanced-SERIAL CH343 (COMx)`.
 
 Usa o `arduino-cli` embutido na Arduino IDE 2.x, se houver. Precisa do core
 `esp32:esp32` (instalado uma vez, ~1 GB):
@@ -52,13 +76,15 @@ monitor serial se subir sem PSRAM.
 `PartitionScheme=huge_app` também não é opcional: câmera + Wi-Fi não cabem na
 partição padrão de 1,2 MB.
 
-## O que só a placa pode confirmar
+## Pinos da câmera (se trocar de placa)
 
-**Os pinos da câmera.** O `camera_pins.h` é cópia literal do arquivo do próprio
-core do ESP32 — nenhum número foi digitado à mão —, mas *qual* dos modelos é a
-sua placa só dá pra saber com ela ligada. O sketch usa
-`CAMERA_MODEL_ESP32S3_EYE`, que é o mapeamento das ESP32-S3-CAM mais comuns
-(mesmo pinout da Freenove ESP32-S3-WROOM).
+O `camera_pins.h` é cópia literal do arquivo do próprio core do ESP32 — nenhum
+número foi digitado à mão —, mas *qual* dos modelos é a placa só dá pra saber
+com ela ligada. O firmware usa `CAMERA_MODEL_ESP32S3_EYE`, o mapeamento das
+ESP32-S3-CAM mais comuns (mesmo pinout da Freenove ESP32-S3-WROOM), e **nesta
+placa ele já foi confirmado**: a câmera respondeu com PID 0x5640.
+
+Numa placa diferente, confira assim.
 
 Se estiver errado, o monitor serial diz na primeira linha:
 
@@ -259,11 +285,15 @@ de o monitor reconectar. Pela UART a porta continua lá: abra o monitor, aperte
 Se a gravação falhar, entre em modo boot: segure **BOOT**, toque em **RESET**,
 solte **BOOT** e grave de novo.
 
-Depois:
+Depois, para ver o que a placa diz:
 
 ```powershell
-arduino-cli monitor -p COM5 -c baudrate=115200
+arduino-cli monitor -p COM8 -c baudrate=115200
 ```
+
+Ou na Arduino IDE: escolha a porta em **Ferramentas → Porta** e abra
+**Ferramentas → Monitor Serial**, em 115200. Feche o monitor antes de gravar de
+novo: os dois não usam a porta ao mesmo tempo.
 
 O boot deve imprimir, em ordem: o motivo do último boot, o PID do sensor, e o
 endereço da rede. Se aparecer
