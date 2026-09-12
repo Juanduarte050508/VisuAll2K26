@@ -715,7 +715,7 @@ restaria varrer os bytes procurando a próxima marca de separação — e uma im
 pode conter essa marca por acaso. Melhor falhar dizendo o que houve do que
 decodificar um quadro cortado em silêncio.
 
-### Nem espelho, nem rotação
+### Sem espelho, mas com um giro
 
 Nos óculos prontos quem os usa é **o ouvinte**, e a câmera aponta para quem
 sinaliza: ela vê outra pessoa de frente, que é a mesma geometria da câmera
@@ -726,6 +726,16 @@ está certa, e o efeito some no dia em que a câmera apontar para outra pessoa.
 Não existe opção de espelhar de propósito: seria uma chave que alguém deixaria
 ligada sem querer, e qualquer resultado de reconhecimento medido com ela ligada
 não valeria nada.
+
+**Girar, sim.** Na haste da armação a câmera não cabe em pé: fica deitada 90°. A
+placa não desfaz isso — a OV5640 espelha e vira de cabeça para baixo, mas não
+gira 90°, e girar o JPEG nela custaria decodificar e comprimir de novo a cada
+quadro. Então o app gira o quadro assim que ele chega, antes da tela e do
+reconhecimento, pelo valor em `MontagemDosOculos.ROTACAO_GRAUS`. Girado, o
+quadro fica em pé e com a mesma proporção 3:4 da câmera do celular, que é o que
+o reconhecimento espera. O valor conferido na tela desta armação é **90**; se a
+câmera trocar de lado na haste, é 270. Só existem esses dois, e a diferença
+entre eles é a imagem aparecer de cabeça para baixo.
 
 ### Testes
 

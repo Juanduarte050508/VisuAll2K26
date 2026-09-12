@@ -108,11 +108,17 @@ internal class MjpegClient(
 
         /**
          * Timeout de leitura. Precisa ser bem maior que o intervalo entre
-         * quadros (15 quadros/s = 67ms) pra nao matar um stream que so
+         * quadros (22 quadros/s = 45ms) pra nao matar um stream que so
          * engasgou, e curto o bastante pra perceber que o link morreu em vez de
          * ficar pendurado pra sempre.
+         *
+         * Era 5s. Este numero e o tempo que a imagem fica congelada na tela
+         * quando o Wi-Fi para de escoar: o app so desiste e reconecta depois
+         * dele. Os travamentos que o Wi-Fi resolve sozinho, medidos no serial da
+         * placa, ficam abaixo de 2,6s -- entao 3s ainda espera por eles e corta
+         * quase dois segundos do congelamento quando o link morreu de verdade.
          */
-        const val TIMEOUT_LEITURA_MS = 5_000
+        const val TIMEOUT_LEITURA_MS = 3_000
         const val TIMEOUT_CONEXAO_MS = 3_000
 
         private class ConexaoHttp(private val http: HttpURLConnection) : Conexao {

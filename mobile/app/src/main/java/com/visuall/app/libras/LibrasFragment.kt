@@ -51,6 +51,7 @@ import com.visuall.app.databinding.FragmentLibrasBinding
 import com.visuall.app.oculos.EnderecoDosOculos
 import com.visuall.app.oculos.MensagemDeErro
 import com.visuall.app.oculos.MjpegClient
+import com.visuall.app.oculos.MontagemDosOculos
 import com.visuall.app.oculos.NetworkStreamSource
 import com.visuall.app.ui.EncaixeDeQuadro
 import com.visuall.app.ui.ProporcaoDaCamera
@@ -1432,6 +1433,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             ssidOculos = if (naPlaca) EnderecoDosOculos.REDE else null,
             senhaOculos = if (naPlaca) EnderecoDosOculos.SENHA else null,
             aoQuadro = { quadro ->
+                // A camera fica deitada na haste da armacao, entao o quadro
+                // chega tombado. Girar AQUI, uma vez so, deixa a tela, o
+                // reconhecimento e o desenho dos landmarks vendo a mesma
+                // imagem em pe. Ver MontagemDosOculos.
+                val emPe = girarQuadro(quadro, MontagemDosOculos.ROTACAO_GRAUS)
                 // Duas copias porque os dois consumidores tem donos diferentes:
                 // o analisarQuadro RECICLA o bitmap que recebe, e a tela precisa
                 // do dela viva ate o proximo quadro chegar.
@@ -1440,7 +1446,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 // redesenho de tela inteira -- e o unico gasto que da pra tirar
                 // sem parar de entender os sinais.
                 if (!telaBloqueada) {
-                    val paraTela = quadro.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                    val paraTela = emPe.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
                     view?.post {
                         if (usandoOculos && _binding != null && !telaBloqueada) {
                             binding.ivOculos.setImageBitmap(paraTela)
@@ -1449,12 +1455,32 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                         }
                     }
                 }
-                // rotacao 0: a camera fica fixa na armacao, ao contrario da do
-                // celular, que informa a rotacao a cada quadro.
-                librasAnalyzer?.analisarQuadro(quadro, 0f, false) ?: quadro.recycle()
+                // rotacao 0: o quadro ja veio girado da linha de cima. A camera
+                // fica fixa na armacao, ao contrario da do celular, que informa
+                // a rotacao a cada quadro.
+                librasAnalyzer?.analisarQuadro(emPe, 0f, false) ?: emPe.recycle()
             },
             aoEstado = { estado -> view?.post { mostrarEstadoOculos(estado) } }
         ).also { it.iniciar() }
+    }
+
+    /**
+     * Gira o quadro dos oculos pra pessoa aparecer em pe.
+     *
+     * Toma posse do que recebe: quando cria um bitmap novo, recicla o antigo na
+     * hora, porque sao uns 300 KB por quadro e o coletor de lixo nao acompanha
+     * 22 quadros por segundo. Sem giro, devolve o proprio quadro.
+     */
+    private fun girarQuadro(
+        quadro: android.graphics.Bitmap,
+        graus: Float
+    ): android.graphics.Bitmap {
+        if (graus % 360f == 0f) return quadro
+        val matriz = android.graphics.Matrix().apply { postRotate(graus) }
+        val girado = android.graphics.Bitmap.createBitmap(
+            quadro, 0, 0, quadro.width, quadro.height, matriz, true)
+        if (girado !== quadro) quadro.recycle()
+        return girado
     }
 
     /**

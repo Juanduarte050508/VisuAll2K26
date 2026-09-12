@@ -163,6 +163,10 @@ static bool inicia_camera() {
   // sinaliza: ela ve outra pessoa de frente, que e a mesma geometria da camera
   // traseira do celular. O app nao espelha essa, e o reconhecimento ja foi
   // conferido assim.
+  //
+  // Girar 90 graus, que e como a camera fica deitada na haste dos oculos, o
+  // sensor nao faz: ele so espelha e vira de cabeca pra baixo. Quem gira e o
+  // app, no MontagemDosOculos, com a imagem ja decodificada.
   s->set_hmirror(s, 0);
   s->set_vflip(s, 0);
 
