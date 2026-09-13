@@ -17,6 +17,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Ver o comentario do mesmo id no layout retrato. -->
+    <ImageView
+        android:id="@+id/iv_oculos"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#000000"
+        android:contentDescription="Imagem dos oculos"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/preview_view"
+        app:layout_constraintBottom_toBottomOf="@id/preview_view"
+        app:layout_constraintStart_toStartOf="@id/preview_view"
+        app:layout_constraintEnd_toEndOf="@id/preview_view" />
+
     <com.visuall.app.ui.LandmarkOverlayView
         android:id="@+id/landmark_overlay"
         android:layout_width="0dp"
@@ -317,6 +331,20 @@
             android:contentDescription="Historico das respostas"
             android:padding="13dp"
             android:src="@drawable/ic_history"
+            app:tint="@color/text_primary"
+            app:layout_constraintEnd_toStartOf="@id/btn_reply_landscape"
+            app:layout_constraintTop_toTopOf="@id/btn_reply_exit"
+            app:layout_constraintBottom_toBottomOf="@id/btn_reply_exit" />
+
+        <ImageView
+            android:id="@+id/btn_reply_landscape"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/vf_bg_action_btn"
+            android:contentDescription="Girar resposta para horizontal"
+            android:padding="11dp"
+            android:src="@drawable/ic_screen_landscape"
             app:tint="@color/text_primary"
             app:layout_constraintEnd_toStartOf="@id/btn_reply_exit"
             app:layout_constraintTop_toTopOf="@id/btn_reply_exit"
@@ -759,7 +787,7 @@
             android:layout_width="wrap_content"
             android:layout_height="32dp"
             android:layout_marginHorizontal="4dp"
-            android:background="@drawable/vf_bg_mode_inactive"
+            android:background="@drawable/vf_bg_pilula_off"
             android:gravity="center"
             android:minWidth="92dp"
             android:paddingHorizontal="12dp"
@@ -768,6 +796,42 @@
             android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <!--
+        Toque troca entre a camera do celular e a dos oculos; toque longo abre
+        o endereco. Fora do controls_row porque aquele FrameLayout tem 64dp e
+        ja tem o botao de girar no centro.
+    -->
+    <!-- Par do btn_bloquear do retrato; o app roda travado em retrato, mas o
+         view binding exige a view nos dois layouts pra nao virar opcional. -->
+    <ImageView
+        android:id="@+id/btn_bloquear"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/vf_bg_action_btn"
+        android:contentDescription="Escurecer a tela"
+        android:padding="12dp"
+        android:src="@drawable/ic_cadeado"
+        android:visibility="gone"
+        app:tint="@color/text_primary"
+        app:layout_constraintBottom_toTopOf="@id/btn_oculos"
+        app:layout_constraintStart_toStartOf="@id/btn_oculos"
+        app:layout_constraintEnd_toEndOf="@id/btn_oculos" />
+
+    <ImageView
+        android:id="@+id/btn_oculos"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/vf_bg_action_btn"
+        android:contentDescription="Usar a camera dos oculos"
+        android:padding="12dp"
+        android:src="@drawable/ic_olho"
+        app:tint="@color/text_primary"
+        app:layout_constraintBottom_toTopOf="@id/controls_row"
+        app:layout_constraintStart_toStartOf="@id/controls_row"
+        app:layout_constraintEnd_toEndOf="@id/controls_row" />
 
     <FrameLayout
         android:id="@+id/controls_row"
@@ -815,6 +879,53 @@
             android:contentDescription="Girar camera"
             android:padding="12dp"
             android:src="@drawable/ic_flip" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/oculos_lock"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#FF000000"
+        android:clickable="true"
+        android:elevation="32dp"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Mesma ordem do retrato: setas em cima, grandes, depois o texto. -->
+        <ImageView
+            android:id="@+id/iv_lock_setas"
+            android:layout_width="160dp"
+            android:layout_height="172dp"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="88dp"
+            android:contentDescription="Deslize para cima para desbloquear"
+            android:src="@drawable/ic_setas_desbloquear" />
+
+        <TextView
+            android:id="@+id/tv_lock_titulo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="64dp"
+            android:letterSpacing="0.1"
+            android:text="VISUALL OUVINDO"
+            android:textColor="#5A5A5A"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_lock_dica"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="40dp"
+            android:text="deslize para desbloquear"
+            android:textColor="#3D3D3D"
+            android:textSize="13sp" />
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

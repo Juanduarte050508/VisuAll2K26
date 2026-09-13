@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.ColorStateList
@@ -15,25 +16,22 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
-import android.hardware.camera2.CaptureRequest
 import android.util.Log
-import android.util.Range
 import android.view.MotionEvent
+import android.view.WindowManager
 import android.view.Surface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 
 import android.util.Size
-import androidx.camera.camera2.interop.Camera2Interop
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -50,6 +48,12 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.visuall.app.R
 import com.visuall.app.databinding.FragmentLibrasBinding
+import com.visuall.app.oculos.EnderecoDosOculos
+import com.visuall.app.oculos.MensagemDeErro
+import com.visuall.app.oculos.MjpegClient
+import com.visuall.app.oculos.NetworkStreamSource
+import com.visuall.app.ui.EncaixeDeQuadro
+import com.visuall.app.ui.ProporcaoDaCamera
 import com.visuall.app.ui.ScanFrameView
 import com.visuall.app.ui.compose.LibrasLandscapeHud
 import java.util.Locale
@@ -73,7 +77,18 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // (LibrasAnalyzer.TEMPO_PRA_LIMPAR_CORPO, 5s): ali o tempo longo existe
         // pra nao confundir com um sinal sendo feito, e aqui nao ha essa
         // duvida -- o dedo esta no botao de proposito.
-        const val TEMPO_HOLD_LIMPAR_MS = 3_000L
+        //
+        // Era 3s, e 3s e tempo demais pra alguem descobrir sozinho que existe:
+        // segura um pouco, nao ve nada acontecer, solta. Quem testou concluiu
+        // que a lixeira nao apagava tudo. 1,2s ainda e mais que o dobro do
+        // toque longo padrao do Android (500ms), entao nao dispara por acaso,
+        // e e curto o bastante pra caber na paciencia de quem esta so
+        // apertando um botao.
+        const val TEMPO_HOLD_LIMPAR_MS = 1_200L
+
+        // Espaco entre os botoes do alto. Ver espacarBarraDoTopo.
+        const val ESPACO_BARRA_DP = 8
+        const val ESPACO_BARRA_OCULOS_DP = 18
     }
 
     private var _binding: FragmentLibrasBinding? = null
@@ -90,6 +105,25 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     private var pendingBind = false
 
     private var lensFacing = CameraSelector.LENS_FACING_FRONT
+
+    // Camera dos oculos (ESP32 por Wi-Fi). Quando ligada, o CameraX e
+    // desvinculado e os quadros passam a vir da rede -- ver ligarOculos().
+    private var fonteOculos: NetworkStreamSource? = null
+    private var usandoOculos = false
+
+    /** Ultima falha ja avisada, pra o laco de reconexao nao repetir o aviso. */
+    private var ultimoAvisoOculos: String? = null
+
+    /** Tela escurecida e surda a toques, com o reconhecimento rodando. */
+    private var telaBloqueada = false
+    private var yInicialDestrave = 0f
+
+    // Com o celular no bolso o gesto de voltar dispara sozinho na borda da
+    // tela. Deixar passar tiraria a pessoa do modo oculos no meio de uma
+    // conversa -- e ela so ia descobrir ao tirar o celular do bolso.
+    private val ignorarVoltarBloqueado = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = Unit
+    }
 
     private val historyStore by lazy { ConversationHistoryStore(requireContext().applicationContext) }
 
@@ -117,6 +151,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     // Texto da resposta atual. Vivia no tv_reply da bolha; com a bolha fora da
     // tela ele passa a ser estado do fragmento, sem view espelhando.
     private var respostaAtual = ""
+    private var respostaForcouPaisagem = false
+    private var orientacaoAntesDaResposta: Int? = null
 
 
     // Acabamos de abrir uma activity nossa (o reconhecedor de fala)? Se sim, o
@@ -176,6 +212,10 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
         requireActivity().onBackPressedDispatcher
             .addCallback(viewLifecycleOwner, fecharRespostaNoVoltar)
+        // Depois do de cima: o ultimo registrado tem prioridade, e enquanto a
+        // tela esta travada nada mais deve responder ao voltar.
+        requireActivity().onBackPressedDispatcher
+            .addCallback(viewLifecycleOwner, ignorarVoltarBloqueado)
         setupButtons()
         updateModeButtons()
     }
@@ -259,7 +299,6 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
     }
 
-    @androidx.annotation.OptIn(markerClass = [ExperimentalCamera2Interop::class])
     private fun bindCamera() {
         val provider = cameraProvider ?: return
         if (!isAdded || _binding == null) return
@@ -323,17 +362,26 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             .setResolutionSelector(resolutionSelector)
             .setTargetRotation(targetRotation)
 
-        // Fixa o FPS numa faixa que a câmera realmente suporta. Pedir 60fps
-        // fixo sem checar antes falha silenciosamente em muitos aparelhos (o
-        // Camera2Interop simplesmente ignora o pedido) e, mesmo quando aceito,
-        // força exposição curta — pior imagem em ambiente escuro. Consultamos
-        // as faixas disponíveis e escolhemos a melhor, avisando no Logcat
-        // quando 60fps fixo não é suportado nativamente.
-        selecionarFaixaFps(requestedLensFacing)?.let { faixa ->
-            Camera2Interop.Extender(analysisBuilder)
-                .setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, faixa)
-        }
-
+        // Aqui a sessão era fixada em 60fps (CONTROL_AE_TARGET_FPS_RANGE, via
+        // Camera2Interop). Retirado: era a origem da cor diferente da tela da
+        // câmera.
+        //
+        // Faixa de AE fixa em 60 proíbe a exposição de passar de 1/60s. Em
+        // ambiente fechado a câmera compensa com ganho, e o aparelho ainda
+        // troca o caminho de processamento — nos próprios logs do Samsung dá
+        // pra ver os grafos separados por taxa (..._30FPS.vgo e
+        // ..._60FPS.vgo). O resultado é uma imagem com cor, contraste e ruído
+        // diferentes do que a mesma câmera mostra na tela anterior, que é o
+        // que se via ao entrar no modo Libras.
+        //
+        // E não comprava nada. Medido neste aparelho com o pino ativo:
+        // fps=24,4 com frame=36ms, dos quais 25ms são o MediaPipe da mão. O
+        // teto do reconhecimento é a própria inferência, perto de 27fps —
+        // os quadros extras que os 60fps entregavam eram descartados pelo
+        // STRATEGY_KEEP_ONLY_LATEST antes de serem olhados.
+        //
+        // Sem o pino, o AE volta ao automático: mesma decisão de exposição da
+        // tela da câmera, mesma cor.
         val analysis = analysisBuilder.build()
 
         val usandoCameraFrontal = lensFacing == CameraSelector.LENS_FACING_FRONT
@@ -451,50 +499,46 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     // ROTATION_0 e a resposta certa sempre.
     private fun currentTargetRotation(): Int = Surface.ROTATION_0
 
-    // Consulta as faixas de FPS que a câmera realmente suporta (Camera2) e
-    // escolhe a melhor opção em vez de forçar 60fps às cegas. Retorna null se
-    // não conseguir consultar (a câmera então usa o auto padrão do CameraX).
-    private fun selecionarFaixaFps(lensFacing: Int): Range<Int>? {
-        val desejada = Range(60, 60)
-        return try {
-            val manager = requireContext()
-                .getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            val cameraId = manager.cameraIdList.firstOrNull { id ->
-                val facingCam = manager.getCameraCharacteristics(id)
-                    .get(CameraCharacteristics.LENS_FACING)
-                val facingDesejado = if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
-                    CameraCharacteristics.LENS_FACING_FRONT
-                } else {
-                    CameraCharacteristics.LENS_FACING_BACK
-                }
-                facingCam == facingDesejado
-            } ?: return null
-
-            val faixas = manager.getCameraCharacteristics(cameraId)
-                .get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-                ?: return null
-
-            faixas.firstOrNull { it == desejada } ?: run {
-                // Sem 60fps fixo nativo: usa a faixa de maior teto disponível
-                // em vez de insistir num valor que a câmera vai ignorar.
-                val melhor = faixas.maxByOrNull { it.upper }
-                Log.w(
-                    "LibrasFragment",
-                    "Camera sem suporte nativo a 60fps fixo; usando $melhor"
-                )
-                melhor
-            }
-        } catch (e: Exception) {
-            Log.w("LibrasFragment", "Falha ao consultar faixas de FPS da camera", e)
-            null
-        }
-    }
-
+    /**
+     * Usa no modo Libras a MESMA proporcao escolhida na tela da camera.
+     *
+     * Antes esta funcao so limpava a razao: a preview enchia o aparelho
+     * inteiro e o fillCenter dela cortava o que nao coubesse. Como o quadro
+     * que chega da camera e 4:3 e a tela e muito mais alta que isso, o corte
+     * era grande -- por volta de um terco da largura some num aparelho alto -- e
+     * o resultado parece imagem ampliada, que foi o que se viu no S26.
+     *
+     * Com 4:3 escolhido, a preview passa a ser uma caixa 3:4 centrada: o
+     * quadro aparece inteiro, sem corte e sem ampliacao, do mesmo jeito que na
+     * tela da camera. Com 16:9, segue enchendo a tela e cortando, que tambem e
+     * o que a tela da camera faz nesse modo.
+     *
+     * O que NAO muda e a analise: ela continua pedindo 4:3 sempre, porque e a
+     * geometria em que o modelo foi treinado (ver aspectX no LibrasAnalyzer).
+     * Enquadramento e gosto; mexer no quadro analisado seria mexer no
+     * reconhecimento.
+     *
+     * O desenho dos landmarks acompanha sozinho: o overlay esta presinho as
+     * bordas da preview e ja calcula em Modo.CORTANDO, que numa caixa 3:4 com
+     * conteudo 4:3 nao corta nada.
+     *
+     * So no retrato. O layout-land tem outro desenho, e uma caixa 3:4 no meio
+     * de uma tela deitada nao e o que se pede ali.
+     */
     private fun applyPreviewAspectRatio() {
         val params = binding.previewView.layoutParams
                 as? ConstraintLayout.LayoutParams ?: return
-        if (params.dimensionRatio != null) {
-            params.dimensionRatio = null
+        val retrato =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val razao = if (retrato) {
+            ProporcaoDaCamera.razaoDaPreview(
+                ProporcaoDaCamera.ehQuatroPorTres(requireContext())
+            )
+        } else {
+            null
+        }
+        if (params.dimensionRatio != razao) {
+            params.dimensionRatio = razao
             binding.previewView.layoutParams = params
         } else {
             binding.previewView.requestLayout()
@@ -502,6 +546,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun applyHudLayout() {
+        if (painelRespostaAberto && isLandscapeHudCompact()) {
+            removeLandscapeHud()
+            setPortraitHudVisible(false)
+            binding.replyPanel.isVisible = true
+            atualizarBotaoResponder()
+            return
+        }
+
         if (!isLandscapeHudCompact()) {
             applyPortraitHudLayout()
             return
@@ -536,7 +588,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnExitLibras.visibility = visibility
         binding.tvLive?.visibility = visibility
         binding.btnLines.visibility = visibility
-        binding.tvModeLabel.visibility = visibility
+        // "Modo Libras" sai no modo oculos. Com o cadeado, sao cinco coisas
+        // disputando a barra de cima, e o rotulo era o que sobrava espremido --
+        // aparecia como "M..." ou "...", que nao informa nada. Ele e um rotulo
+        // de estado, e no modo oculos o estado ja esta dito pelos icones.
+        binding.tvModeLabel.visibility =
+            if (visible && !usandoOculos) View.VISIBLE else View.GONE
         binding.btnHistory.visibility = visibility
         binding.scanFrame.visibility = visibility
         binding.actionRow?.visibility = visibility
@@ -544,6 +601,10 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.modesRow.visibility = visibility
         binding.btnReply.visibility = visibility
         binding.btnFlip.visibility = visibility
+        binding.btnOculos.visibility = visibility
+        // So existe dentro do modo oculos; fora dele nao ha o que travar.
+        binding.btnBloquear.visibility =
+            if (visible && usandoOculos) View.VISIBLE else View.GONE
         binding.controlsRow?.visibility = visibility
         binding.chipResult.visibility = if (visible) View.INVISIBLE else View.GONE
         binding.progressConfidence.visibility = if (visible) View.INVISIBLE else View.GONE
@@ -557,7 +618,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // resultado da fala ja ter preenchido a caixa. A conversa na tela
         // precisa durar ate alguem apagar, nao ate a proxima troca de layout.
         binding.phraseBubble.isVisible = visible && fraseBase.isNotBlank()
-        binding.replyPanel.isVisible = visible && painelRespostaAberto
+        binding.replyPanel.isVisible =
+            painelRespostaAberto && (visible || respostaForcouPaisagem)
         atualizarBotaoResponder()
     }
 
@@ -633,6 +695,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        _binding?.root?.post {
+            if (_binding == null) return@post
+            applyPreviewAspectRatio()
+            applyHudLayout()
+        }
+    }
+
     // ── Botões ─────────────────────────────────────────────────────────────
     private fun setupButtons() {
         binding.btnExitLibras.setOnClickListener { exitLibrasMode() }
@@ -659,6 +730,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
 
         binding.btnReplyAudio.setOnClickListener { startSpeechReply() }
+        binding.btnReplyLandscape.setOnClickListener { toggleReplyOrientation() }
 
         // PRONTO guarda o texto e esconde o teclado, mas NAO sai da tela cheia:
         // e exatamente aqui que o celular e virado pra pessoa surda ler.
@@ -718,6 +790,25 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 CameraSelector.LENS_FACING_BACK
             else CameraSelector.LENS_FACING_FRONT
             scheduleBindCamera(180L)
+        }
+
+        binding.btnOculos.setOnClickListener {
+            if (usandoOculos) desligarOculos()
+            // Sem endereco gravado nao ha o que conectar; pedir na hora e
+            // melhor que ligar e falhar sem dizer por que.
+            else if (enderecoOculos().isBlank()) pedirEnderecoOculos()
+            else ligarOculos()
+        }
+        // Enquanto a frase cresce a voz fala so o pedaco novo; aqui ela le a
+        // frase inteira, quando a pessoa decide que terminou.
+        binding.phraseBubble.setOnClickListener { falarFraseInteira() }
+
+        binding.btnBloquear.setOnClickListener { bloquearTela() }
+        binding.oculosLock.setOnTouchListener { capa, evento -> aoTocarNaCapa(capa, evento) }
+
+        binding.btnOculos.setOnLongClickListener {
+            pedirEnderecoOculos()
+            true
         }
 
         // Toque: apaga só a última letra/sinal. Segurar 3s: limpa a frase toda.
@@ -790,6 +881,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             .show(childFragmentManager, "history_$origem")
     }
 
+    /**
+     * Pinta o par ALFABETO/CORPO.
+     *
+     * O escolhido e dourado cheio com texto escuro; o outro e a pilula padrao
+     * do app -- preto, anel dourado, texto branco (vf_bg_pilula_off). Era um
+     * cinza apagado de contorno invisivel, que dizia "desligado" quando o que
+     * ele e de fato e a outra opcao, disponivel, ao lado.
+     */
     private fun updateModeButtons() {
         val dark = ContextCompat.getColor(requireContext(), R.color.text_on_gold)
         val light = ContextCompat.getColor(requireContext(), R.color.text_primary)
@@ -797,12 +896,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         if (modoAtual == LibrasAnalyzer.Modo.ALFABETO) {
             binding.btnModeAlphabet.setBackgroundResource(R.drawable.vf_bg_mode_active)
             binding.btnModeAlphabet.setTextColor(dark)
-            binding.btnModeBody.setBackgroundResource(R.drawable.vf_bg_mode_inactive)
+            binding.btnModeBody.setBackgroundResource(R.drawable.vf_bg_pilula_off)
             binding.btnModeBody.setTextColor(light)
             binding.btnModeBody.text = "CORPO"
             binding.tvModeLabel.text = "Modo Libras"
         } else {
-            binding.btnModeAlphabet.setBackgroundResource(R.drawable.vf_bg_mode_inactive)
+            binding.btnModeAlphabet.setBackgroundResource(R.drawable.vf_bg_pilula_off)
             binding.btnModeAlphabet.setTextColor(light)
             binding.btnModeBody.setBackgroundResource(R.drawable.vf_bg_mode_active)
             binding.btnModeBody.setTextColor(dark)
@@ -892,7 +991,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun openReplyPanel(focus: Boolean = false) {
-        if (isLandscapeHudCompact()) {
+        if (isLandscapeHudCompact() && !respostaForcouPaisagem) {
             binding.replyPanel.isVisible = false
             painelRespostaAberto = false
             Toast.makeText(requireContext(), "Resposta ocultada no HUD compacto", Toast.LENGTH_SHORT).show()
@@ -906,6 +1005,64 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.etReply.setSelection(respostaAtual.length)
         }
         if (focus) focusReplyText()
+    }
+
+    private fun toggleReplyOrientation() {
+        if (!painelRespostaAberto || !binding.replyPanel.isVisible) return
+        if (respostaForcouPaisagem) {
+            restoreReplyOrientation()
+            binding.root.post {
+                if (_binding == null) return@post
+                applyPreviewAspectRatio()
+                applyHudLayout()
+            }
+            return
+        }
+
+        val host = activity ?: return
+        val orientacaoAnterior = (orientacaoAntesDaResposta ?: host.requestedOrientation)
+            .takeUnless { it == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+            ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        saveReplyToScreen()
+        binding.etReply.clearFocus()
+        hideKeyboard()
+
+        runCatching {
+            host.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }.onSuccess {
+            orientacaoAntesDaResposta = orientacaoAnterior
+            respostaForcouPaisagem = true
+            applyHudLayout()
+        }.onFailure { error ->
+            Log.w("LibrasFragment", "Nao consegui girar a resposta para paisagem", error)
+            Toast.makeText(
+                requireContext(),
+                "Nao consegui girar a tela neste celular",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun restoreReplyOrientation() {
+        if (!respostaForcouPaisagem && orientacaoAntesDaResposta == null) return
+        val host = activity
+        val orientacaoAnterior = orientacaoAntesDaResposta
+            ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        respostaForcouPaisagem = false
+        orientacaoAntesDaResposta = null
+
+        host?.let { safeHost ->
+            runCatching {
+                safeHost.requestedOrientation = orientacaoAnterior
+            }.onFailure { error ->
+                Log.w("LibrasFragment", "Nao consegui restaurar a orientacao da resposta", error)
+                runCatching {
+                    safeHost.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
+            }
+        }
     }
 
     private fun focusReplyText() {
@@ -928,6 +1085,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         atualizarBotaoResponder()
         binding.etReply.clearFocus()
         hideKeyboard()
+        restoreReplyOrientation()
+        binding.root.post {
+            if (_binding == null) return@post
+            applyPreviewAspectRatio()
+            applyHudLayout()
+        }
     }
 
     /**
@@ -1044,6 +1207,19 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private fun fraseExibida(): String = PhraseOutput.exibicao(fraseBase, interrogativoAtivo)
 
+    /**
+     * Le a frase inteira em voz alta.
+     *
+     * Passa pelo textoParaVoz igual ao trecho de cada sinal: e ele que baixa a
+     * caixa alta -- sem isso o motor trata a frase como sigla e soletra.
+     */
+    private fun falarFraseInteira() {
+        val fala = PhraseOutput.textoParaVoz(fraseExibida())
+        if (fala.isBlank()) return
+        tts?.speak(fala, TextToSpeech.QUEUE_FLUSH, null, null)
+        vibrateConfirmation()
+    }
+
     private fun onInterrogativoAtualizado(ativo: Boolean) {
         activity?.runOnUiThread {
             if (_binding == null) return@runOnUiThread
@@ -1142,7 +1318,16 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.chipResult.visibility = if (isLandscapeHudCompact()) View.GONE else View.INVISIBLE
             binding.progressConfidence.visibility = if (isLandscapeHudCompact()) View.GONE else View.INVISIBLE
             binding.progressConfidence.progress = 0
-            binding.progressClear.isVisible = false
+            // Mesma protecao do onGestoLimpar: enquanto o dedo segura a
+            // lixeira, a barra e DELE.
+            //
+            // Sem isto o hold nao aparecia nunca. Quem vai apertar a lixeira
+            // tira a mao da frente da camera pra alcancar a tela, entao
+            // "sem mao no quadro" e exatamente o estado em que o dedo esta no
+            // botao -- e esta linha apagava a barra treze vezes por segundo,
+            // bem na hora em que ela e a unica coisa dizendo que segurar
+            // adianta alguma coisa.
+            if (holdAnimator == null) binding.progressClear.isVisible = false
         }
     }
 
@@ -1178,10 +1363,21 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             if (holdAnimator != null) return@runOnUiThread
             binding.progressClear.isVisible = progresso > 0f
             binding.progressClear.progress  = (progresso * 100).toInt()
-            if (progresso == 0f) {
-                // Frase foi limpa — reseta referência
-                fraseAnterior = ""
-            }
+            // Aqui havia um `if (progresso == 0f) fraseAnterior = ""`, com o
+            // comentário "frase foi limpa". Progresso zero NÃO quer dizer que
+            // a frase foi limpa: quer dizer que o gesto de limpar não está
+            // acontecendo — o que é verdade em quase todo quadro. E o modo
+            // corpo chama este callback a CADA quadro, então a referência do
+            // que já foi falado era zerada dezenas de vezes por segundo.
+            //
+            // Era isso que fazia a voz repetir a frase inteira a cada sinal
+            // novo: quando "O computador ajuda" chegava, a anterior já tinha
+            // virado "", e o trecho novo passava a ser a frase toda.
+            //
+            // Não é preciso zerar nada aqui. Quando a frase é limpa de
+            // verdade, chega um onFraseUpdate("") — e onFraseAtualizada já
+            // guarda "" como anterior no fim, sem falar nada, porque a frase
+            // encolheu.
         }
     }
 
@@ -1227,8 +1423,289 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     // popBackStack()/navigate() disparam onDestroyView() do fragmento, que já
     // faz essa limpeza. Fazer duas vezes era redundante e o código antigo
     // ainda arriscava a mesma race condition se a ordem das chamadas mudasse.
+    // ── Camera dos oculos (ESP32 por Wi-Fi) ──────────────────────────────
+    //
+    // A troca e so de FONTE. Nada do reconhecimento muda: os quadros vao pro
+    // mesmo LibrasAnalyzer.analisarQuadro que a camera do celular alimenta.
+
+    /** Brilho da tela travada. Zero cravado alguns aparelhos leem como "automatico". */
+    private val BRILHO_TRAVADO = 0.01f
+
+    /** Quanto da altura da tela o dedo precisa subir pra destravar. */
+    private val FRACAO_DESTRAVE = 0.22f
+
+    private fun prefsOculos() =
+        requireContext().getSharedPreferences("oculos", Context.MODE_PRIVATE)
+
+    private fun enderecoOculos(): String =
+        prefsOculos().getString("url", "").orEmpty()
+
+    private fun pedirEnderecoOculos() {
+        val campo = EditText(requireContext()).apply {
+            // Enquanto a placa nao chega, o endereco e o do mock rodando no PC
+            // (oculos/mock_esp32_cam.py). Depois vira o IP do proprio ESP32.
+            setText(enderecoOculos().ifBlank { "http://192.168.15.10:8080/stream" })
+            setSelection(text.length)
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Endereco dos oculos")
+            .setMessage(
+                "Endereco do stream.\n\n" +
+                    "Oculos: ${EnderecoDosOculos.URL}\n" +
+                    "O app entra na rede ${EnderecoDosOculos.REDE} sozinho, e o " +
+                    "celular continua na rede de casa pro resto.\n\n" +
+                    "Mock no PC: o IP do PC com /stream no fim. Ai o app usa o " +
+                    "Wi-Fi em que o celular ja esta.")
+            .setView(campo)
+            .setPositiveButton("Conectar") { _, _ ->
+                val url = campo.text.toString().trim()
+                prefsOculos().edit().putString("url", url).apply()
+                if (url.isNotBlank()) ligarOculos()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun ligarOculos() {
+        // O analyzer nasce junto com a camera e carrega os modelos, o que
+        // demora e nao pode acontecer na thread da interface. Se ainda nao
+        // existe, e porque a camera acabou de abrir -- pedir pra tentar de novo
+        // e melhor que congelar a tela carregando modelo aqui.
+        val endereco = enderecoOculos()
+        val analyzer = librasAnalyzer
+        if (analyzer == null) {
+            Toast.makeText(requireContext(),
+                "Espere a camera abrir e tente de novo", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        usandoOculos = true
+        // Solta a camera do celular: sem isto ela continua ligada gastando
+        // bateria e entregando quadros que ninguem quer.
+        cameraProvider?.unbindAll()
+        // INVISIBLE, nao GONE, e a diferenca entre funcionar e nao funcionar.
+        //
+        // iv_oculos e landmark_overlay tem largura e altura 0dp amarradas as
+        // QUATRO bordas do preview_view. No ConstraintLayout um view GONE
+        // colapsa num ponto, e quem esta preso a ele colapsa junto: os dois
+        // viravam 0x0. O stream continuava chegando, o reconhecimento
+        // continuava rodando a 13 quadros/s, e a tela ficava preta -- sem erro
+        // nenhum, porque erro nao houve; a imagem era desenhada num retangulo
+        // de tamanho zero.
+        //
+        // INVISIBLE nao desenha mas mantem as medidas, que e exatamente o que
+        // esses dois precisam do preview_view.
+        binding.previewView.visibility = View.INVISIBLE
+        binding.ivOculos.isVisible = true
+        // A ImageView dos oculos usa fitCenter: a imagem 4:3 cabe inteira e
+        // sobram faixas em cima e embaixo. O desenho dos landmarks precisa
+        // saber disso, senao mapeia como se a imagem enchesse a tela e joga o
+        // esqueleto centenas de pixels acima da mao.
+        binding.landmarkOverlay.setEncaixe(EncaixeDeQuadro.Modo.INTEIRA)
+        binding.btnBloquear.isVisible = true
+        binding.tvModeLabel.isVisible = false   // ver setPortraitHudVisible
+        espacarBarraDoTopo(true)
+        // A tela nao pode apagar. Apagando, o Android para a activity: o
+        // reconhecimento morre e a conexao com os oculos cai junto. Quem quiser
+        // guardar o celular no bolso usa o cadeado, que escurece sem apagar.
+        manterTelaAcesa(true)
+        binding.btnOculos.alpha = 1f
+        binding.landmarkOverlay.clear()
+
+        // Camera que aponta pra FORA, como a traseira do celular: nao espelha.
+        // A frontal espelha pra casar com o dataset, que foi gravado em selfie.
+        analyzer.setEspelhamento(false)
+
+        fonteOculos?.parar()
+        // Apontando pra placa, o app pede pro Android entrar na rede dela --
+        // so pro app, sem tirar o celular da rede de casa. Apontando pro mock,
+        // usa o Wi-Fi em que o celular ja esta.
+        val naPlaca = EnderecoDosOculos.ehAPlaca(endereco)
+        fonteOculos = NetworkStreamSource(
+            context = requireContext().applicationContext,
+            url = endereco,
+            ssidOculos = if (naPlaca) EnderecoDosOculos.REDE else null,
+            senhaOculos = if (naPlaca) EnderecoDosOculos.SENHA else null,
+            aoQuadro = { quadro ->
+                // Duas copias porque os dois consumidores tem donos diferentes:
+                // o analisarQuadro RECICLA o bitmap que recebe, e a tela precisa
+                // do dela viva ate o proximo quadro chegar.
+                // Com a tela travada ninguem esta olhando. Pular a copia
+                // corta uns 300 KB por quadro, treze vezes por segundo, mais um
+                // redesenho de tela inteira -- e o unico gasto que da pra tirar
+                // sem parar de entender os sinais.
+                if (!telaBloqueada) {
+                    val paraTela = quadro.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                    view?.post {
+                        if (usandoOculos && _binding != null && !telaBloqueada) {
+                            binding.ivOculos.setImageBitmap(paraTela)
+                        } else {
+                            paraTela.recycle()
+                        }
+                    }
+                }
+                // rotacao 0: a camera fica fixa na armacao, ao contrario da do
+                // celular, que informa a rotacao a cada quadro.
+                librasAnalyzer?.analisarQuadro(quadro, 0f, false) ?: quadro.recycle()
+            },
+            aoEstado = { estado -> view?.post { mostrarEstadoOculos(estado) } }
+        ).also { it.iniciar() }
+    }
+
+    /**
+     * O que a pessoa ve enquanto os oculos conectam, caem e voltam.
+     *
+     * Falha NAO vai pro chip de feedback, e isso e o principal aqui. Duas
+     * razoes, as duas vistas na tela: aquele chip e do reconhecimento
+     * ("CENTRALIZE A MAO"), e um texto de rede em vermelho ali se le como se a
+     * mao estivesse errada; e o motivo cru era comprido o bastante pra esticar
+     * a linha do chip e empurrar a lixeira pra fora do celular.
+     *
+     * Falha vira aviso passageiro, em portugues, dizendo o que fazer. O motivo
+     * cru vai pro logcat, que e onde ele serve.
+     */
+    private fun mostrarEstadoOculos(estado: MjpegClient.Estado) {
+        if (!usandoOculos || _binding == null) return
+        when (estado) {
+            is MjpegClient.Estado.Conectando ->
+                onFeedback("PROCURANDO OCULOS", LibrasAnalyzer.FEEDBACK_NEUTRO)
+
+            is MjpegClient.Estado.Recebendo -> {
+                // Nao anuncia nada: a imagem aparecendo ja e o aviso, e no
+                // quadro seguinte o proprio reconhecimento ocupa o chip.
+                ultimoAvisoOculos = null
+                onFeedback("", LibrasAnalyzer.FEEDBACK_NEUTRO)
+            }
+
+            is MjpegClient.Estado.Erro -> {
+                Log.w("Oculos", "falha na conexao: ${estado.motivo}")
+                val aviso = MensagemDeErro.emPortugues(estado.motivo)
+                // O laco tenta de novo a cada poucos segundos; sem esta guarda
+                // seria um aviso atras do outro, pra sempre.
+                if (aviso != ultimoAvisoOculos) {
+                    ultimoAvisoOculos = aviso
+                    Toast.makeText(requireContext(), aviso, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // ── Tela travada (modo oculos) ───────────────────────────────────────
+    //
+    // Pra que serve: no uso de verdade o celular vai pro bolso e os oculos
+    // continuam vendo. A tela precisa continuar ACESA -- apagando, o Android
+    // para a activity e o reconhecimento junto --, mas uma tela acesa no bolso
+    // aceita toque e gasta bateria. Travada, ela fica preta, surda e barata.
+
+    private fun bloquearTela() {
+        if (!usandoOculos || telaBloqueada || _binding == null) return
+        telaBloqueada = true
+        binding.oculosLock.isVisible = true
+        // Coberto pela capa, mas o Android nao sabe disso e redesenharia a cada
+        // quadro assim mesmo.
+        binding.landmarkOverlay.visibility = View.INVISIBLE
+        ignorarVoltarBloqueado.isEnabled = true
+        // Preto numa tela OLED e pixel desligado; com o brilho no minimo, o
+        // custo de manter a tela acesa cai pra perto de nada.
+        ajustarBrilho(BRILHO_TRAVADO)
+    }
+
+    private fun desbloquearTela() {
+        if (!telaBloqueada) return
+        telaBloqueada = false
+        _binding?.oculosLock?.isVisible = false
+        _binding?.landmarkOverlay?.visibility = View.VISIBLE
+        ignorarVoltarBloqueado.isEnabled = false
+        ajustarBrilho(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
+    }
+
+    /**
+     * Destrava com um arrasto pra cima, e engole todo o resto.
+     *
+     * Arrasto, e nao toque: no bolso, um toque acontece sozinho o tempo todo.
+     * Um movimento longo e deliberado, nao.
+     */
+    private fun aoTocarNaCapa(capa: View, evento: MotionEvent): Boolean {
+        when (evento.actionMasked) {
+            MotionEvent.ACTION_DOWN -> yInicialDestrave = evento.rawY
+            MotionEvent.ACTION_UP -> {
+                val subiu = yInicialDestrave - evento.rawY
+                if (subiu >= capa.height * FRACAO_DESTRAVE) desbloquearTela()
+            }
+        }
+        return true
+    }
+
+    private fun ajustarBrilho(valor: Float) {
+        val janela = activity?.window ?: return
+        janela.attributes = janela.attributes.apply { screenBrightness = valor }
+    }
+
+    /**
+     * Espaca os botoes do alto conforme o modo.
+     *
+     * No modo oculos o rotulo "Modo Libras" sai, e o buraco que ele deixa fica
+     * todo de um lado. Medido na tela do aparelho, antes: cadeado, olho e
+     * historico grudados na direita com 8dp entre eles, e 39dp de vazio entre
+     * o LINHAS e o cadeado. Tres botoes colados com um buraco do lado leem
+     * como uma coisa so, espremida contra a borda.
+     *
+     * Com 18dp entre eles o grupo anda 20dp pra esquerda, e o vazio que sobra
+     * ate o LINHAS cai justamente pros mesmos 18dp: medido depois, os quatro
+     * ficam em 18,0 / 18,3 / 18,3dp. A barra vira uma fileira de espacamento
+     * unico, que e o certo aqui -- LINHAS, olho e historico sao todos controle
+     * do que a tela mostra, entao nao ha grupo nenhum pra separar.
+     *
+     * So no retrato: no layout-land estes dois botoes sao uma coluna vertical
+     * presa pelos dois lados ao btn_oculos, e ali marginEnd deslocaria o botao
+     * pro lado em vez de separar coisa alguma.
+     */
+    private fun espacarBarraDoTopo(comOculos: Boolean) {
+        // desligarOculos roda tambem quando a tela ja foi embora, e por isso
+        // as linhas vizinhas la usam `_binding?`. Aqui vale o mesmo.
+        val b = _binding ?: return
+        if (resources.configuration.orientation != Configuration.ORIENTATION_PORTRAIT) return
+        val dp = if (comOculos) ESPACO_BARRA_OCULOS_DP else ESPACO_BARRA_DP
+        val px = (dp * resources.displayMetrics.density).toInt()
+        for (botao in listOf(b.btnBloquear, b.btnOculos)) {
+            val lp = botao.layoutParams as? ViewGroup.MarginLayoutParams ?: continue
+            if (lp.marginEnd == px) continue
+            lp.marginEnd = px
+            botao.layoutParams = lp
+        }
+    }
+
+    private fun manterTelaAcesa(manter: Boolean) {
+        val janela = activity?.window ?: return
+        if (manter) janela.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else janela.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    private fun desligarOculos() {
+        usandoOculos = false
+        ultimoAvisoOculos = null
+        desbloquearTela()
+        manterTelaAcesa(false)
+        _binding?.btnBloquear?.isVisible = false
+        _binding?.tvModeLabel?.isVisible = true
+        espacarBarraDoTopo(false)
+        fonteOculos?.parar()
+        fonteOculos = null
+        binding.ivOculos.setImageDrawable(null)
+        binding.ivOculos.isVisible = false
+        // De volta pra PreviewView, que e fillCenter.
+        binding.landmarkOverlay.setEncaixe(EncaixeDeQuadro.Modo.CORTANDO)
+        binding.previewView.isVisible = true
+        binding.btnOculos.alpha = 0.6f
+        binding.landmarkOverlay.clear()
+        // Religa a camera do celular; o bind recria o analyzer com o
+        // espelhamento certo pra lente em uso.
+        scheduleBindCamera(120L)
+    }
+
     private fun exitLibrasMode() {
         if (!isAdded || view == null) return
+        restoreReplyOrientation()
         val navController = findNavController()
         if (navController.currentDestination?.id != R.id.nav_libras) return
 
@@ -1244,6 +1721,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Brilho e tela acesa sao da JANELA, nao do fragmento: sem devolver
+        // aqui, sair do modo Libras deixaria o app inteiro escuro e sem apagar.
+        restoreReplyOrientation()
+        desbloquearTela()
+        manterTelaAcesa(false)
+        // Antes de tudo: as threads dos oculos seguram uma referencia ao
+        // analyzer, e ele e fechado logo abaixo.
+        fonteOculos?.parar()
+        fonteOculos = null
         landscapeHud = null
         _binding?.btnDeleteLetter?.removeCallbacks(limparTudoRunnable)
         holdAnimator?.cancel()

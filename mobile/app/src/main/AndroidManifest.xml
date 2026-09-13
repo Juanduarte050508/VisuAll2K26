@@ -6,6 +6,14 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Os dois sao pra camera dos oculos, e so pra ela. O Wi-Fi da placa nao
+         tem internet nenhuma pra oferecer, e o Android abandona uma rede
+         assim: sem pedir a rede explicitamente e mandar o stream por ela, o
+         pedido sai pelos dados moveis e nunca chega na placa. Ver
+         RedeDosOculos. CHANGE_NETWORK_STATE e permissao normal desde a API 23,
+         concedida na instalacao. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -14,6 +22,7 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:label="VisuAll"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
@@ -28,13 +37,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- O app inteiro roda em retrato. A camera depende de a preview e os
-             guias de enquadramento estarem no mesmo referencial: girando o
-             aparelho, a imagem ia pra paisagem e as molduras ficavam onde
-             estavam. E "sensor" ainda ignorava o bloqueio de rotacao do
-             sistema. Ver currentTargetRotation() nos fragments de camera. -->
+        <!-- O app roda em retrato, exceto quando o modo resposta força
+             paisagem temporariamente. A camera depende de a preview e os guias
+             de enquadramento estarem no mesmo referencial: girando o aparelho,
+             a imagem ia pra paisagem e as molduras ficavam onde estavam. E
+             "sensor" ainda ignorava o bloqueio de rotacao do sistema. Ver
+             currentTargetRotation() nos fragments de camera. -->
         <activity
             android:name=".ui.MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
