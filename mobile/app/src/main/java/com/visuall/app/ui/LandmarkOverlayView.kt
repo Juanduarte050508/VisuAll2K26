@@ -113,8 +113,9 @@ class LandmarkOverlayView @JvmOverloads constructor(
     /**
      * Diz como a fonte atual está sendo exibida, para o desenho cair em cima
      * dela. Precisa acompanhar o `scaleType` da View que mostra a imagem:
-     * `fillCenter` da PreviewView é [EncaixeDeQuadro.Modo.CORTANDO],
-     * `fitCenter` da ImageView dos óculos é [EncaixeDeQuadro.Modo.INTEIRA].
+     * `fillCenter` da PreviewView e `centerCrop` da ImageView dos óculos são
+     * [EncaixeDeQuadro.Modo.CORTANDO]; `fitCenter` seria
+     * [EncaixeDeQuadro.Modo.INTEIRA].
      */
     internal fun setEncaixe(modo: EncaixeDeQuadro.Modo) {
         if (encaixe == modo) return

@@ -29,7 +29,7 @@
         android:layout_height="0dp"
         android:background="@color/background"
         android:contentDescription="Imagem dos oculos"
-        android:scaleType="fitCenter"
+        android:scaleType="centerCrop"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="@id/preview_view"
         app:layout_constraintBottom_toBottomOf="@id/preview_view"
@@ -219,17 +219,24 @@
         app:layout_constraintTop_toBottomOf="@id/btn_history"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!--
+        A moldura de feedback (vermelha, amarela, verde) nas bordas da imagem.
+
+        Ficava presa a tela, com margens, e os cantos caiam fora da imagem:
+        na faixa preta, ou por cima da camera, sem marcar onde ela enxerga.
+        Presa ao preview_view ela fica exatamente na borda da captura, nas duas
+        fontes e nos dois formatos: o preview_view tem a proporcao escolhida
+        (3:4 ou 9:16, ver applyPreviewAspectRatio), e tanto a camera do celular
+        quanto a imagem dos oculos preenchem ele inteiro.
+    -->
     <com.visuall.app.ui.ScanFrameView
         android:id="@+id/scan_frame"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginHorizontal="28dp"
-        android:layout_marginTop="104dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/feedback_row"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="@id/preview_view"
+        app:layout_constraintBottom_toBottomOf="@id/preview_view"
+        app:layout_constraintStart_toStartOf="@id/preview_view"
+        app:layout_constraintEnd_toEndOf="@id/preview_view" />
 
     <TextView
         android:id="@+id/chip_result"

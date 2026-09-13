@@ -535,8 +535,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
      *
      * Com 4:3 escolhido, a preview passa a ser uma caixa 3:4 centrada: o
      * quadro aparece inteiro, sem corte e sem ampliacao, do mesmo jeito que na
-     * tela da camera. Com 16:9, segue enchendo a tela e cortando, que tambem e
-     * o que a tela da camera faz nesse modo.
+     * tela da camera. Com 16:9, uma caixa 9:16 centrada, e o fillCenter corta
+     * as laterais do quadro 4:3 pra caber nela.
+     *
+     * A caixa e tambem onde fica a moldura de feedback (vermelha, amarela,
+     * verde): ela esta presa as bordas do preview_view no XML. Por isso o 16:9
+     * tem razao propria e nao enche a tela -- enchendo, a borda da imagem seria
+     * a borda da tela, e a moldura iria parar embaixo dos botoes. A imagem dos
+     * oculos ocupa a mesma caixa (centerCrop), entao vale pras duas fontes.
      *
      * O que NAO muda e a analise: ela continua pedindo 4:3 sempre, porque e a
      * geometria em que o modelo foi treinado (ver aspectX no LibrasAnalyzer).
@@ -544,8 +550,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
      * reconhecimento.
      *
      * O desenho dos landmarks acompanha sozinho: o overlay esta presinho as
-     * bordas da preview e ja calcula em Modo.CORTANDO, que numa caixa 3:4 com
-     * conteudo 4:3 nao corta nada.
+     * bordas da preview e calcula em Modo.CORTANDO, igual ao fillCenter.
      *
      * So no retrato. O layout-land tem outro desenho, e uma caixa 3:4 no meio
      * de uma tela deitada nao e o que se pede ali.
@@ -1549,11 +1554,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // esses dois precisam do preview_view.
         binding.previewView.visibility = View.INVISIBLE
         binding.ivOculos.isVisible = true
-        // A ImageView dos oculos usa fitCenter: a imagem 4:3 cabe inteira e
-        // sobram faixas em cima e embaixo. O desenho dos landmarks precisa
-        // saber disso, senao mapeia como se a imagem enchesse a tela e joga o
-        // esqueleto centenas de pixels acima da mao.
-        binding.landmarkOverlay.setEncaixe(EncaixeDeQuadro.Modo.INTEIRA)
+        // A ImageView dos oculos usa centerCrop, igual ao fillCenter da
+        // PreviewView: a imagem enche a area da camera, que tem a proporcao
+        // escolhida (3:4 ou 9:16), e o que sobra sai. E isso que deixa a
+        // moldura de feedback na borda da imagem nas duas fontes. O quadro
+        // ANALISADO continua inteiro, como na camera do celular -- o corte e
+        // so de tela. O desenho dos landmarks precisa do mesmo encaixe da
+        // ImageView, senao cai longe da mao.
+        binding.landmarkOverlay.setEncaixe(EncaixeDeQuadro.Modo.CORTANDO)
         binding.btnBloquear.isVisible = true
         binding.tvModeLabel.isVisible = false   // ver setPortraitHudVisible
         espacarBarraDoTopo(true)
