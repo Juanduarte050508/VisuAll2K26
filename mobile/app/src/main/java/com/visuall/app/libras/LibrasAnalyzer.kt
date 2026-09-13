@@ -40,8 +40,15 @@ class LibrasAnalyzer(
     private val onLandmarks: (
         hands: List<FloatArray>, pose: FloatArray?, frameAspect: Float
     ) -> Unit = { _, _, _ -> },
-    // Sobrancelha levantada (marcador de pergunta) — igual ao Python, entra
-    // nos DOIS modos. Chamado só quando o estado muda (não a cada frame).
+    // Pontos faciais usados pelo marcador, desenhados apenas no modo corpo.
+    private val onFaceLandmarks: (
+        pontos: FloatArray?, frameAspect: Float
+    ) -> Unit = { _, _ -> },
+    // Diagnostico da calibracao e da maquina de estados facial. Tambem fica
+    // restrito ao modo corpo e nao persiste nenhum dado biometrico.
+    private val onFaceDiagnostic: (diagnostic: BrowDetection) -> Unit = { },
+    // Interrogacao confirmada pelo gesto facial no modo corpo. `true` e um
+    // evento que fica preso a frase; `false` so sai de apagar/limpar/resetar.
     private val onInterrogativo: (ativo: Boolean) -> Unit = { }
 ) : ImageAnalysis.Analyzer {
 
@@ -248,18 +255,6 @@ class LibrasAnalyzer(
         const val DYNAMIC_TRAINING_FILE_NAME = "visuall_libras_dynamic_phone_dataset.csv"
         val LETRAS_REPETICAO_AUTO        = setOf("S", "R")
 
-        // Marcador de sobrancelha (frase vira pergunta) — portado 1:1 de
-        // m01_visuall_config.py / app.py (ler_marcador). Os índices são da
-        // topologia de 468 pontos do FaceMesh, a mesma usada pelo
-        // FaceLandmarker da Tasks API — não precisou remapear nada.
-        const val LIMIAR_SOBRANCELHA = 0.38f
-        const val JANELA_SOBR = 5
-        const val IDX_BROW_L = 105
-        const val IDX_BROW_R = 334
-        const val IDX_EYE_TOP_L = 159
-        const val IDX_EYE_TOP_R = 386
-        const val IDX_EYE_OUT_L = 33
-        const val IDX_EYE_OUT_R = 263
         // A sobrancelha não muda de estado tão rápido quanto uma letra: rodar
         // o 3º modelo (FaceLandmarker) 1 a cada N frames economiza latência
         // sem atraso perceptível no marcador de pergunta.
@@ -519,14 +514,26 @@ class LibrasAnalyzer(
         perfHandNs += SystemClock.elapsedRealtimeNanos() - handStartNs
         handCount = result.landmarks().size
 
-        // Rosto roda nos DOIS modos, igual ao Holistic do Python ("Em AMBOS
-        // os modos o ROSTO entra como marcador não-manual") — ver
-        // FaceMarkerEngine para o throttle de frames e o porte do ler_marcador.
+        // A pergunta por sobrancelha atende Corpo e Alfabeto. Pontos e painel
+        // tecnico permanecem exclusivos do Corpo para nao poluir o Alfabeto.
         val faceStartNs = SystemClock.elapsedRealtimeNanos()
-        faceEngine.step(mpImage, timestamp, onInterrogativo)
+        faceEngine.step(
+            mpImage = mpImage,
+            timestamp = timestamp,
+            onDetected = {
+                if (sentence.marcarInterrogativa()) onInterrogativo(true)
+            },
+            onLandmarks = { pontos ->
+                if (modoAtual == Modo.CORPO) onFaceLandmarks(pontos, frameAspect)
+            },
+            onDiagnostic = { diagnostic ->
+                if (modoAtual == Modo.CORPO) onFaceDiagnostic(diagnostic)
+            }
+        )
         perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
 
         if (modoAtual == Modo.CORPO) {
+
             val poseDetector = bodyEngine.ensureLoaded()
             if (poseDetector == null) {
                 notificarLetra("-", 0f, "corpo")
@@ -587,6 +594,7 @@ class LibrasAnalyzer(
             if ((agora - tempoInicioEsticado) >= TEMPO_PRA_LIMPAR
                 && (agora - ultimoTempoLimpar) > 2_000L) {
                 sentence.limpar(); commitGate.liberarRepeticao()
+                onInterrogativo(false)
                 tempoInicioEsticado = 0L; ultimoTempoLimpar = agora
                 onRepeticaoPendente(null)
                 onFraseUpdate("")
@@ -850,6 +858,7 @@ class LibrasAnalyzer(
         if (limpeza.limpar) {
             sentence.limpar()
             bodyEngine.limparTokens()
+            onInterrogativo(false)
             onFraseUpdate("")
         }
         // NÃO interrompe a captura só porque a barra começou a encher. Foi o
@@ -871,19 +880,22 @@ class LibrasAnalyzer(
 
         val novaFrase = bodyEngine.processarFrame(bodyFrame, agora, ::notificarLetra, ::notificarFeedback)
         if (novaFrase != null) {
-            sentence.definir(novaFrase)
+            sentence.definirTrechoCorpo(novaFrase)
             onFraseUpdate(sentence.frase)
         }
     }
 
     fun setModo(novoModo: Modo) {
+        val modoAnterior = modoAtual
         modoAtual = novoModo
+        faceEngine.reset()
+        onFaceLandmarks(null, frameAspect)
+        if (modoAnterior == Modo.CORPO) sentence.encerrarTrechoCorpo()
         bodyEngine.resetTudo()
         resetEstadoAlfabeto()
-        // Troca de modo começa uma frase nova (letras e sinais de corpo não se
-        // misturam na mesma frase).
-        sentence.limpar()
-        onFraseUpdate("")
+        if (novoModo == Modo.CORPO) sentence.iniciarTrechoCorpo()
+        // A frase e a interrogacao pertencem a conversa, nao ao reconhecedor.
+        // Trocar de modo reinicia apenas os estados temporais de cada modelo.
         onRepeticaoPendente(null)
         // resetEstadoAlfabeto() (acima) já zera o cache de dedup da letra;
         // falta só o do feedback, pra troca de modo reafirmar a mensagem na
@@ -928,12 +940,20 @@ class LibrasAnalyzer(
         onFraseUpdate(sentence.frase)
     }
     fun apagarUltima() {
+        if (sentence.removerInterrogacao()) {
+            onInterrogativo(false)
+            return
+        }
         if (modoAtual == Modo.CORPO) {
             // No corpo apagamos o último SINAL (token) e re-traduzimos.
-            val novaFrase = bodyEngine.apagarUltimoToken() ?: return
-            sentence.definir(novaFrase)
-            onFraseUpdate(sentence.frase)
-            return
+            val novaFrase = bodyEngine.apagarUltimoToken()
+            if (novaFrase != null) {
+                sentence.definirTrechoCorpo(novaFrase)
+                onFraseUpdate(sentence.frase)
+                return
+            }
+            // Sem sinal na sessao corporal atual, a lixeira continua podendo
+            // apagar o texto compartilhado que veio do modo anterior.
         }
         if (!sentence.apagarUltima()) return
         commitGate.liberarRepeticao()
@@ -946,6 +966,7 @@ class LibrasAnalyzer(
         commitGate.liberarRepeticao()
         bodyEngine.limparTokens()
         onRepeticaoPendente(null)
+        onInterrogativo(false)
         onFraseUpdate(sentence.frase)
     }
 

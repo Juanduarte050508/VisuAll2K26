@@ -13,6 +13,37 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
 
 ## Não lançado
 
+- **Interrogacao tambem no Alfabeto** — o `FaceMarkerEngine` agora roda a cada
+  cinco frames nos dois modos. O evento e o `?` atendem Corpo e Alfabeto; pontos
+  vermelhos e painel tecnico continuam exclusivos do Corpo para nao poluir a
+  tela do Alfabeto. Nenhum limiar facial ou de mao foi alterado. Status:
+  **implementado, aguardando validacao no aparelho**.
+
+- **A frase sumia ao alternar Corpo/Alfabeto** — a troca agora reinicia somente
+  os estados temporais dos reconhecedores. O texto e a interrogacao pertencem a
+  uma unica conversa e permanecem na tela. Como o tradutor corporal recalcula
+  todos os sinais da sessao atual, ele substitui apenas esse trecho e preserva
+  o que veio do Alfabeto ou de uma passagem anterior pelo Corpo. Status:
+  **corrigido, aguardando validacao no aparelho**.
+
+- **A interrogacao sumia quando a sobrancelha abaixava** — o detector agora
+  entrega um evento de pergunta e o `SentenceBuilder` guarda esse estado ate
+  uma acao explicita. A lixeira remove primeiro o `?`, e limpar a frase tambem
+  o remove. O indicador separado perdeu fundo, elevacao, foco e
+  clique para nao parecer um botao. Status: **corrigido, aguardando validacao no
+  aparelho**.
+
+- **Deteccao temporal de sobrancelhas no modo CORPO** — a comparacao fixa de
+  distancia foi substituida por baseline neutro pessoal (2 s, minimo 10
+  amostras), normalizacao pela distancia interocular, EMA de 110 ms e escore
+  hibrido de geometria/blendshapes. Entrada exige 280 ms, saida 240 ms,
+  visibilidade minima 700 ms e cooldown 900 ms; os limiares de saida usam 55%
+  dos de entrada. Piscar, `browDown`, olhos abertos sem elevacao geometrica,
+  pose excessiva, rosto ausente/multiplo e landmarks incompletos sao rejeitados.
+  Valores sao iniciais e devem ser recalibrados com os videos do Xiaomi 15;
+  detalhes e protocolo em `mobile/DETECCAO_SOBRANCELHA.md`. Status: **em teste no
+  aparelho**.
+
 - **A câmera continuava reconhecendo com o modo resposta aberto** — enquanto
   alguém responde, ninguém está sinalizando: a câmera fica apontada para
   qualquer coisa, e o que ela reconhecia por acidente entrava na frase e era

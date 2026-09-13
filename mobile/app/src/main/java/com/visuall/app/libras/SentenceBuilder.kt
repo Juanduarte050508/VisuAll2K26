@@ -16,6 +16,16 @@ internal class SentenceBuilder {
     var frase: String = ""
         private set
 
+    // Interrogacao confirmada pelo gesto facial. Fica separada do texto para
+    // o tradutor do modo corpo poder reconstruir a frase sem perder o sinal.
+    var interrogativa: Boolean = false
+        private set
+
+    // Texto que ja existia ao entrar no modo corpo. A traducao corporal e
+    // recalculada a cada novo sinal, por isso substituimos somente o trecho da
+    // sessao atual e nunca o que veio do alfabeto ou de uma sessao anterior.
+    private var prefixoTrechoCorpo: String? = null
+
     // Letra reconhecida que seria uma repetição da última e por isso está
     // esperando confirmação explícita (botão REPETIR). "" = nada pendente.
     var letraRepetidaPendente: String = ""
@@ -69,16 +79,55 @@ internal class SentenceBuilder {
         letraRepetidaPendente = ""
     }
 
+    /** Fixa a interrogacao ate uma acao explicita de apagar/limpar. */
+    fun marcarInterrogativa(): Boolean {
+        if (interrogativa) return false
+        interrogativa = true
+        return true
+    }
+
+    /** A lixeira remove primeiro a pontuacao, como faria num texto normal. */
+    fun removerInterrogacao(): Boolean {
+        if (!interrogativa) return false
+        interrogativa = false
+        return true
+    }
+
+    fun iniciarTrechoCorpo() {
+        prefixoTrechoCorpo = frase.trimEnd()
+        letraRepetidaPendente = ""
+    }
+
+    fun definirTrechoCorpo(traducao: String) {
+        val prefixo = prefixoTrechoCorpo ?: frase.trimEnd().also {
+            prefixoTrechoCorpo = it
+        }
+        val trecho = traducao.trim()
+        frase = when {
+            prefixo.isBlank() -> trecho
+            trecho.isBlank() -> prefixo
+            else -> "$prefixo $trecho"
+        }
+        letraRepetidaPendente = ""
+    }
+
+    fun encerrarTrechoCorpo() {
+        prefixoTrechoCorpo = null
+    }
+
     /** Apaga o último caractere. Devolve false se a frase já estava vazia. */
     fun apagarUltima(): Boolean {
         if (frase.isEmpty()) return false
         frase = frase.dropLast(1)
+        if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = frase.trimEnd()
         letraRepetidaPendente = ""
         return true
     }
 
     fun limpar() {
         frase = ""
+        interrogativa = false
+        if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = ""
         letraRepetidaPendente = ""
     }
 

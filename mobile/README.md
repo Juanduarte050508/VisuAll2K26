@@ -31,6 +31,9 @@ app/build/outputs/apk/debug/app-debug.apk
 
 Para treinar ou substituir modelos, leia [TREINAMENTO_MODELOS.md](TREINAMENTO_MODELOS.md).
 
+Para entender, testar e calibrar a deteccao de sobrancelhas no modo CORPO,
+leia [DETECCAO_SOBRANCELHA.md](DETECCAO_SOBRANCELHA.md).
+
 ## Estrutura
 
 ```text

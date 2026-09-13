@@ -49,10 +49,14 @@ class LandmarkOverlayView @JvmOverloads constructor(
             12 to 14, 14 to 16,       // braço direito
             11 to 23, 12 to 24, 23 to 24  // tronco
         )
+        private val POSE_JOINTS = POSE_CONNECTIONS
+            .flatMap { listOf(it.first, it.second) }
+            .toSet()
     }
 
     private var hands: List<FloatArray> = emptyList()
     private var pose: FloatArray? = null
+    private var face: FloatArray? = null
     // Proporção (largura/altura) da imagem que o analyzer processou.
     private var contentAspect = CONTENT_ASPECT_PADRAO
 
@@ -84,9 +88,16 @@ class LandmarkOverlayView @JvmOverloads constructor(
         postInvalidate()
     }
 
+    fun updateFace(face: FloatArray?, frameAspect: Float) {
+        this.face = face
+        if (frameAspect > 0f) this.contentAspect = frameAspect
+        postInvalidate()
+    }
+
     fun clear() {
         this.hands = emptyList()
         this.pose = null
+        this.face = null
         postInvalidate()
     }
 
@@ -126,15 +137,20 @@ class LandmarkOverlayView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (hands.isEmpty() && pose == null) return
+        if (hands.isEmpty() && pose == null && face == null) return
         recomputeMapping()
 
         pose?.let { p ->
-            drawSkeleton(canvas, p, POSE_CONNECTIONS, poseLinePaint, poseJointPaint, 6f)
+            drawSkeleton(
+                canvas, p, POSE_CONNECTIONS, poseLinePaint, poseJointPaint, 6f, POSE_JOINTS
+            )
         }
         hands.forEach { hand ->
             drawSkeleton(canvas, hand, HAND_CONNECTIONS, linePaint, jointPaint, 7f)
         }
+        // Mesmo azul e tamanho da main, mas com os landmarks faciais reais:
+        // os pontos de rosto da pose nao medem a sobrancelha.
+        face?.let { pontos -> drawPoints(canvas, pontos, poseJointPaint, 6f) }
     }
 
     private fun drawSkeleton(
@@ -143,7 +159,8 @@ class LandmarkOverlayView @JvmOverloads constructor(
         connections: Array<Pair<Int, Int>>,
         line: Paint,
         joint: Paint,
-        jointRadius: Float
+        jointRadius: Float,
+        jointIndices: Set<Int>? = null
     ) {
         val count = pts.size / 2
         connections.forEach { (a, b) ->
@@ -156,8 +173,17 @@ class LandmarkOverlayView @JvmOverloads constructor(
             }
         }
         for (i in 0 until count) {
+            if (jointIndices != null && i !in jointIndices) continue
             val x = pts[i * 2]; val y = pts[i * 2 + 1]
             if (isValid(x, y)) canvas.drawCircle(mapX(x), mapY(y), jointRadius, joint)
+        }
+    }
+
+    private fun drawPoints(canvas: Canvas, pts: FloatArray, paint: Paint, radius: Float) {
+        for (i in 0 until pts.size / 2) {
+            val x = pts[i * 2]
+            val y = pts[i * 2 + 1]
+            if (isValid(x, y)) canvas.drawCircle(mapX(x), mapY(y), radius, paint)
         }
     }
 
