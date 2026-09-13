@@ -80,10 +80,6 @@ class LandmarkOverlayView @JvmOverloads constructor(
         color = Color.parseColor("#8FC0FF")
         style = Paint.Style.FILL
     }
-    private val faceJointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF3B30")
-        style = Paint.Style.FILL
-    }
 
     fun update(hands: List<FloatArray>, pose: FloatArray?, frameAspect: Float) {
         this.hands = hands
@@ -152,7 +148,9 @@ class LandmarkOverlayView @JvmOverloads constructor(
         hands.forEach { hand ->
             drawSkeleton(canvas, hand, HAND_CONNECTIONS, linePaint, jointPaint, 7f)
         }
-        face?.let { pontos -> drawPoints(canvas, pontos, faceJointPaint, 8f) }
+        // Mesmo azul e tamanho da main, mas com os landmarks faciais reais:
+        // os pontos de rosto da pose nao medem a sobrancelha.
+        face?.let { pontos -> drawPoints(canvas, pontos, poseJointPaint, 6f) }
     }
 
     private fun drawSkeleton(

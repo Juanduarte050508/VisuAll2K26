@@ -86,7 +86,7 @@ mostrarem que a separacao nao pode ser obtida com esses sinais.
 
 ```text
 Face Landmarker
-  |- 478 landmarks -> geometria normalizada e pontos vermelhos
+  |- 478 landmarks -> geometria normalizada e pontos azuis
   |- blendshapes    -> subir/descer/piscar/olho aberto
   `- matriz facial -> pitch/yaw/roll
           |
@@ -110,7 +110,7 @@ Landmarks usados:
 
 - Sobrancelha A: 70, 105 e 107; sobrancelha B: 300, 334 e 336.
 - Olho A: cantos 33 e 133; olho B: cantos 362 e 263.
-- O terceiro ponto vermelho de cada olho e virtual: a media dos dois cantos.
+- O terceiro ponto de cada olho e virtual: a media dos dois cantos.
 - Nariz: 1. Boca: 61, 13, 291 e 14.
 
 Primeiro se calcula o centro dos tres pontos de cada sobrancelha e o centro dos
@@ -287,7 +287,8 @@ mesma pessoa.
 
 1. Instale o APK debug e abra o VisuAll.
 2. Entre na tela de Libras e selecione **CORPO**.
-3. Ative **LINHAS**: os 17 pontos devem ficar vermelhos e o painel deve surgir.
+3. Ative **LINHAS**: os 17 pontos devem ficar azuis, seguindo o visual da main,
+   e o painel deve surgir.
 4. Fique frontal e neutro por pelo menos 2-3 s, sem piscar muito. Espere o
    estado mudar de `CALIBRANDO` para `NEUTRO`.
 5. Levante as duas sobrancelhas e segure por cerca de meio segundo. O painel

@@ -208,7 +208,7 @@ internal class FaceMarkerEngine(private val context: Context) {
     }
 
     /**
-     * Pontos vermelhos: 3 por sobrancelha, 3 por olho, nariz e boca. O ponto
+     * Pontos faciais: 3 por sobrancelha, 3 por olho, nariz e boca. O ponto
      * central de cada olho e virtual (media dos cantos), portanto nao desce ao
      * piscar como acontecia com os antigos indices 159/386 da palpebra.
      */
