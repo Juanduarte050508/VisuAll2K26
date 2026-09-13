@@ -35,6 +35,30 @@ pasta em que está.
   uns 50 s. Ver [Calor](#calor).
 - **Não começou:** bateria, carregador e montagem na armação.
 
+## A rede sobe sempre, mesmo sem câmera
+
+Ao ligar, a placa cria a rede **antes** de mexer na câmera. Se a câmera não
+responder (cabo flat solto ou mal encaixado, por exemplo), a rede
+`VisuAll-Oculos` continua aparecendo no celular e a placa tenta a câmera de novo
+a cada 5 s, sozinha.
+
+Antes era o contrário: com a câmera sem responder, a placa desistia antes de criar
+a rede. De fora não se via nada — a rede sumia da lista do celular, e não dava
+para saber se a placa estava desligada, sem energia ou com o cabo solto.
+Aconteceu num teste de verdade.
+
+Enquanto a câmera não volta, o `/stream` responde `503 sem camera`, e o app
+mostra: *"Os oculos estao ligados, mas a camera nao respondeu. Confira o cabo da
+camera."* No monitor serial aparece:
+
+```
+sem camera por enquanto: a rede continua no ar, tento de novo em 5 s
+```
+
+Para ver isso acontecer sem mexer no cabo, use o comando `solta` da
+[bancada](#bancada-ajustes-pelo-monitor-serial). **Nunca encaixe ou tire o cabo
+da câmera com a placa ligada.**
+
 ## Compilar
 
 ```powershell
@@ -238,6 +262,7 @@ serial, um por linha. Valem até a placa reiniciar:
 | `tx N`     | potência máxima do Wi-Fi em dBm, de 2 a 20             |
 | `pausa`    | encerra o stream e recusa novos, para a câmera esfriar |
 | `continua` | volta a aceitar stream                                 |
+| `solta`    | desliga a câmera como se o cabo tivesse soltado; a rede fica no ar e a placa religa a câmera em 5 s |
 
 No boot, e depois de cada comando, o serial mostra o estado:
 

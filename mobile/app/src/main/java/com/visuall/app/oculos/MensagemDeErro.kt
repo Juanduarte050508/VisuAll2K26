@@ -27,10 +27,11 @@ internal object MensagemDeErro {
             "unreachable" in m || "enetunreach" in m || "no route" in m ->
                 "O celular nao alcanca essa rede. Confira o Wi-Fi."
 
-            // Pedimos a rede dos oculos e o sistema ainda nao entregou
-            // nenhuma. Quase sempre o celular nem esta no Wi-Fi certo.
+            // Pedimos a rede dos oculos e o sistema nao entregou nenhuma. Com a
+            // placa o app entra na rede sozinho, entao "conecte-se" nao e a
+            // acao: se a rede nao apareceu, os oculos nao estao no ar.
             RedeDosOculos.SEM_REDE.lowercase() in m ->
-                "Conecte o celular ao Wi-Fi dos oculos."
+                "Nao achei o Wi-Fi dos oculos. Confira se eles estao ligados e perto do celular."
 
             "unable to resolve host" in m || "unknownhost" in m ->
                 "Endereco invalido. Use o numero do IP, como 192.168.4.1."
@@ -46,6 +47,12 @@ internal object MensagemDeErro {
                 "Esse endereco responde, mas nao e video. Falta o /stream no fim?"
 
             "http 404" in m -> "Endereco existe mas nao tem /stream nele."
+
+            // A placa esta no ar, mas a camera nao respondeu. Ela sobe o Wi-Fi
+            // mesmo assim justamente pra poder dizer isto, e tenta a camera de
+            // novo sozinha.
+            "http 503" in m ->
+                "Os oculos estao ligados, mas a camera nao respondeu. Confira o cabo da camera."
 
             // So aparece se o network_security_config sumir do manifesto.
             "cleartext" in m ->

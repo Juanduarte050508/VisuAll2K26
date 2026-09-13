@@ -64,6 +64,13 @@ class MensagemDeErroTest {
         assertTrue("devia citar o /stream: $fala", fala.contains("/stream"))
     }
 
+    /** O firmware responde 503 quando a rede esta no ar e a camera nao. */
+    @Test
+    fun `placa ligada sem camera`() {
+        val fala = MensagemDeErro.emPortugues("o stream respondeu HTTP 503")
+        assertTrue("devia mandar conferir o cabo da camera: $fala", fala.contains("cabo da camera"))
+    }
+
     @Test
     fun `motivo desconhecido vira frase generica, nao texto vazio`() {
         val fala = MensagemDeErro.emPortugues("java.lang.IllegalStateException")

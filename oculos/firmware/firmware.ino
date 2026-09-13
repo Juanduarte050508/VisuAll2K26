@@ -333,6 +333,8 @@ static bool gera_quadros_de_teste() {
 //   tx N       potencia maxima do Wi-Fi, em dBm, de 2 a 20
 //   pausa      encerra o stream e recusa novos, pra camera esfriar
 //   continua   volta a aceitar stream
+//   solta      desliga a camera como se o cabo tivesse soltado: a rede fica,
+//              o app ouve "sem camera" e o loop() religa em 5 s
 //
 // Foi assim que apareceu a forca do pino (ver "Camera"): com a banda ja em
 // 20 MHz o envio ainda travava em um ou dois quadros, e "forca 0" fez o stream
@@ -343,6 +345,10 @@ static volatile bool pausado = false;
 // Quem mexe na camera: o stream, enquanto transmite, e a bancada, pra
 // reiniciar. Os dois ao mesmo tempo derrubariam a placa.
 static SemaphoreHandle_t trava_camera = NULL;
+// A camera respondeu? A rede sobe mesmo sem ela, e o loop() tenta de novo.
+// Ver setup.
+static volatile bool camera_pronta = false;
+static unsigned long ultima_tentativa_camera = 0;
 
 static void informa_wifi() {
   wifi_bandwidth_t banda = WIFI_BW_HT20;
@@ -388,7 +394,8 @@ static void reinicia_camera() {
     return;
   }
   esp_camera_deinit();
-  if (inicia_camera()) {
+  camera_pronta = inicia_camera();
+  if (camera_pronta) {
     sensor_dorme();
   } else {
     Serial.println("bancada: a camera nao voltou");
@@ -444,6 +451,15 @@ static void atende_bancada() {
     pausado = true;
   } else if (comando == "continua") {
     pausado = false;
+  } else if (comando == "solta" && !TESTE_SEM_CAMERA) {
+    interromper_stream = true;
+    xSemaphoreTake(trava_camera, pdMS_TO_TICKS(15000));
+    interromper_stream = false;
+    camera_pronta = false;
+    ultima_tentativa_camera = millis();  // os 5 s contam daqui
+    esp_camera_deinit();
+    xSemaphoreGive(trava_camera);
+    Serial.println("bancada: camera desligada; a placa tenta religar em 5 s");
   } else {
     Serial.println("bancada: comando ou valor invalido");
   }
@@ -556,6 +572,12 @@ static esp_err_t transmite(httpd_req_t *req) {
 
 // A camera so fica acordada enquanto alguem recebe imagem. Ver "Calor".
 static esp_err_t stream(httpd_req_t *req) {
+  if (!camera_pronta && !TESTE_SEM_CAMERA) {
+    // A rede esta no ar, mas a camera nao respondeu (ver setup). O app diz
+    // pra conferir o cabo da camera e tenta de novo sozinho.
+    httpd_resp_set_status(req, "503 Service Unavailable");
+    return httpd_resp_send(req, "sem camera", HTTPD_RESP_USE_STRLEN);
+  }
   if (pausado) {
     // Ver "Bancada". O app tenta de novo sozinho.
     httpd_resp_set_status(req, "503 Service Unavailable");
@@ -606,6 +628,23 @@ static void conta_por_que_reiniciou() {
   Serial.println();
 }
 
+// Liga a camera e a deixa dormindo ate alguem pedir imagem (ver "Calor").
+// de_novo: ja houve uma tentativa antes, e o que ela deixou precisa sair.
+static bool liga_camera(bool de_novo) {
+  xSemaphoreTake(trava_camera, portMAX_DELAY);
+  if (de_novo) esp_camera_deinit();
+  bool ok = inicia_camera();
+  if (ok) sensor_dorme();
+  camera_pronta = ok;
+  xSemaphoreGive(trava_camera);
+  if (ok) {
+    informa_camera();
+  } else {
+    Serial.println("sem camera por enquanto: a rede continua no ar, tento de novo em 5 s");
+  }
+  return ok;
+}
+
 void setup() {
   Serial.begin(115200);
   delay(300);
@@ -613,22 +652,15 @@ void setup() {
   conta_por_que_reiniciou();
   trava_camera = xSemaphoreCreateMutex();
 
-  if (TESTE_SEM_CAMERA) {
-    // A camera fica desligada de proposito: sem clock e sem calor. Ver
-    // "Diagnostico".
-    if (!gera_quadros_de_teste()) {
-      Serial.println("teste sem camera: nao deu pra gerar os quadros");
-      return;
-    }
-  } else {
-    if (!inicia_camera()) {
-      Serial.println("sem camera; nada a servir");
-      return;
-    }
-    // Ninguem esta recebendo imagem ainda. Ver "Calor".
-    sensor_dorme();
-  }
-
+  // A rede sobe PRIMEIRO, e sobe sempre.
+  //
+  // Antes a camera vinha antes, e se ela nao respondesse o setup desistia ali:
+  // sem camera, sem rede. E o pior defeito possivel, porque de fora nao se ve
+  // nada -- a rede VisuAll-Oculos simplesmente some da lista do celular, e nao
+  // da pra saber se a placa esta desligada, sem energia ou com o cabo da camera
+  // solto. Aconteceu num teste: o app nao achou os oculos e a rede nao estava
+  // na lista. Com a rede no ar, o app pergunta e ouve "sem camera", e o loop()
+  // tenta a camera de novo sozinho.
   WiFi.onEvent(avisa_rede);  // ver "Diagnostico"
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(IP_PLACA, IP_PLACA, MASCARA);
@@ -647,7 +679,16 @@ void setup() {
   Serial.printf("no app.: http://%s/stream\n", WiFi.softAPIP().toString().c_str());
   Serial.printf("no nav.: http://%s/\n", WiFi.softAPIP().toString().c_str());
   informa_wifi();
-  if (!TESTE_SEM_CAMERA) informa_camera();
+
+  if (TESTE_SEM_CAMERA) {
+    // A camera fica desligada de proposito: sem clock e sem calor. Ver
+    // "Diagnostico".
+    if (!gera_quadros_de_teste()) {
+      Serial.println("teste sem camera: nao deu pra gerar os quadros");
+    }
+    return;
+  }
+  liga_camera(false);
 }
 
 void loop() {
@@ -656,6 +697,12 @@ void loop() {
   // stream, porque no segundo teste o celular entrava e saia da rede sem
   // chegar a pedir imagem. Ver "Diagnostico" e "Bancada".
   atende_bancada();
+  // Camera que nao respondeu: tenta de novo sem derrubar a rede. E o caso do
+  // cabo flat que volta a fazer contato.
+  if (!TESTE_SEM_CAMERA && !camera_pronta && millis() - ultima_tentativa_camera >= 5000) {
+    ultima_tentativa_camera = millis();
+    liga_camera(true);
+  }
   static unsigned long ultimo_sinal = 0;
   if (millis() - ultimo_sinal >= 5000) {
     ultimo_sinal = millis();

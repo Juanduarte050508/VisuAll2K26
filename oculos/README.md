@@ -577,6 +577,23 @@ A tela do celular bloqueou por inatividade. Enquanto testa:
 & $adb shell "svc power stayon false"   # devolve ao normal
 ```
 
+### A rede VisuAll-Oculos não aparece no celular
+
+A placa cria a rede logo que liga, **mesmo se a câmera não responder** (ver
+[A rede sobe sempre](firmware/README.md#a-rede-sobe-sempre-mesmo-sem-câmera)).
+Então, se ela não está na lista de Wi-Fi do celular, a placa não está rodando o
+programa. Na ordem:
+
+1. **Energia.** O cabo precisa estar firme, e a fonte precisa aguentar o pico do
+   Wi-Fi. Carregador fraco ou power bank que desliga sozinho com pouca corrente
+   derrubam a placa.
+2. **Monitor serial.** Ligue a placa no PC e veja o que ela diz (seção 8.4). Se
+   aparecer `BROWNOUT`, é falta de corrente. Se não aparecer nada, aperte RESET.
+3. **Espere uns 3 s** depois de ligar: é o tempo de a rede subir.
+
+Se a rede aparece mas o app avisa que a câmera não respondeu, desligue a placa e
+reencaixe o cabo flat da câmera.
+
 ### A imagem da placa trava, ou o app diz que ninguém atende
 
 O monitor serial da placa mostra, a cada 5 s, os quadros por segundo, o sinal do
