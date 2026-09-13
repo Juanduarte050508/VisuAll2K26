@@ -219,29 +219,6 @@
         app:layout_constraintTop_toBottomOf="@id/btn_history"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!--
-        Diagnostico temporario do marcador facial. So aparece no modo Corpo
-        quando LINHAS esta ligado; nao e anunciado pelo leitor de tela porque
-        muda varias vezes por segundo.
-    -->
-    <TextView
-        android:id="@+id/tv_face_diagnostic"
-        android:layout_width="250dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/vf_bg_chip"
-        android:elevation="9dp"
-        android:fontFamily="monospace"
-        android:importantForAccessibility="no"
-        android:maxLines="8"
-        android:padding="8dp"
-        android:textColor="@color/text_primary"
-        android:textSize="9sp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btn_exit_libras"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <com.visuall.app.ui.ScanFrameView
         android:id="@+id/scan_frame"
         android:layout_width="0dp"
@@ -387,13 +364,17 @@
             android:src="@drawable/ic_hands"
             app:tint="@color/gold_primary" />
 
+        <!--
+            Sem ellipsize: com mais de uma linha o Android ignora o "start" e
+            corta o FIM, que e a palavra que acabou de entrar. Quem garante que
+            ela aparece e o mostrarFrase() do fragmento.
+        -->
         <TextView
             android:id="@+id/tv_phrase"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="start"
             android:gravity="center"
-            android:maxLines="2"
+            android:maxLines="3"
             android:minHeight="42dp"
             android:paddingStart="54dp"
             android:paddingEnd="50dp"

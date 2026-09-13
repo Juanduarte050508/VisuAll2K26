@@ -16,7 +16,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
+import android.text.StaticLayout
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.WindowManager
 import android.view.Surface
@@ -40,9 +42,11 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -90,6 +94,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // Espaco entre os botoes do alto. Ver espacarBarraDoTopo.
         const val ESPACO_BARRA_DP = 8
         const val ESPACO_BARRA_OCULOS_DP = 18
+
+        // Resposta na horizontal. Ver ajustarRespostaAOrientacao.
+        const val RESPOSTA_BARRA_DEITADA_DP = 36
+        const val RESPOSTA_BOTAO_DEITADO_SP = 12f
+        const val RESPOSTA_TEXTO_DEITADO_SP = 44f
     }
 
     private var _binding: FragmentLibrasBinding? = null
@@ -154,6 +163,22 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     private var respostaAtual = ""
     private var respostaForcouPaisagem = false
     private var orientacaoAntesDaResposta: Int? = null
+
+    // Medidas do painel de resposta como vieram do XML, guardadas antes de a
+    // horizontal compacta mexer nelas, pra ter a que voltar.
+    private var respostaNoXml: MedidasDaResposta? = null
+    private var respostaCompacta = false
+
+    private class MedidasDaResposta(
+        val restricoes: ConstraintSet,
+        val alturaBotao: Int,
+        val textoBotaoPx: Float,
+        val textoRespostaPx: Float,
+        val paddingIcones: List<Int>
+    )
+
+    // A frase inteira que foi pro balao, antes de cortar o comeco. Ver mostrarFrase.
+    private var fraseNoBalao = ""
 
 
     // Acabamos de abrir uma activity nossa (o reconhecedor de fala)? Se sim, o
@@ -441,7 +466,6 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                     onFaceLandmarks = { pontos, frameAspect ->
                         onFaceLandmarksDetected(pontos, frameAspect)
                     },
-                    onFaceDiagnostic = { diagnostic -> onFaceDiagnosticUpdated(diagnostic) },
                     onInterrogativo = { ativo -> onInterrogativoAtualizado(ativo) }
                 ).also {
                     it.setModo(modoAtual)
@@ -547,6 +571,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun applyHudLayout() {
+        ajustarRespostaAOrientacao()
         if (painelRespostaAberto && isLandscapeHudCompact()) {
             removeLandscapeHud()
             setPortraitHudVisible(false)
@@ -562,6 +587,78 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
         setPortraitHudVisible(false)
         ensureLandscapeHud()
+    }
+
+    /**
+     * Resposta na horizontal: os botoes numa barra fina no alto e o resto da
+     * tela para o texto.
+     *
+     * A Activity trata a rotacao sozinha (configChanges no manifesto), entao
+     * girar a resposta NAO troca para o layout-land: continua o de retrato, com
+     * icones de 48dp em cima e FALAR/LIMPAR/PRONTO de 52dp embaixo. Deitado,
+     * isso comia quase metade da altura -- que e justamente o que falta na
+     * horizontal -- e o texto que a pessoa surda precisa ler ficava espremido
+     * no meio. Aqui os tres botoes sobem pra linha dos icones, tudo com 36dp,
+     * e a letra cresce.
+     *
+     * Olha a orientacao da configuracao, e nao isLandscapeByBounds: logo depois
+     * da rotacao o root ainda tem as medidas de retrato, porque o layout novo
+     * nao passou.
+     */
+    private fun ajustarRespostaAOrientacao() {
+        val painel = binding.replyPanel
+        val icones = listOf(binding.btnReplyHistory, binding.btnReplyLandscape, binding.btnReplyExit)
+        val botoes = listOf(binding.btnReplyAudio, binding.btnReplyErase, binding.btnReplyClose)
+        val xml = respostaNoXml ?: MedidasDaResposta(
+            restricoes = ConstraintSet().apply { clone(painel) },
+            alturaBotao = binding.btnReplyAudio.layoutParams.height,
+            textoBotaoPx = binding.btnReplyAudio.textSize,
+            textoRespostaPx = binding.etReply.textSize,
+            paddingIcones = icones.map { it.paddingTop }
+        ).also { respostaNoXml = it }
+
+        val deitada =
+            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (deitada == respostaCompacta) return
+        respostaCompacta = deitada
+
+        if (!deitada) {
+            xml.restricoes.applyTo(painel)
+            botoes.forEach { botao ->
+                botao.layoutParams = botao.layoutParams.apply { height = xml.alturaBotao }
+                botao.setTextSize(TypedValue.COMPLEX_UNIT_PX, xml.textoBotaoPx)
+            }
+            icones.zip(xml.paddingIcones).forEach { (icone, p) -> icone.setPadding(p, p, p, p) }
+            binding.etReply.setTextSize(TypedValue.COMPLEX_UNIT_PX, xml.textoRespostaPx)
+            return
+        }
+
+        val barra = dp(RESPOSTA_BARRA_DEITADA_DP)
+        val sair = R.id.btn_reply_exit
+        ConstraintSet().apply {
+            clone(xml.restricoes)
+            icones.forEach {
+                constrainWidth(it.id, barra)
+                constrainHeight(it.id, barra)
+            }
+            connect(sair, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, dp(8))
+            // Titulo e botoes centrados na mesma barra dos icones.
+            connect(R.id.tv_reply_title, ConstraintSet.TOP, sair, ConstraintSet.TOP, 0)
+            connect(R.id.tv_reply_title, ConstraintSet.BOTTOM, sair, ConstraintSet.BOTTOM, 0)
+            connect(R.id.reply_actions, ConstraintSet.TOP, sair, ConstraintSet.TOP, 0)
+            connect(R.id.reply_actions, ConstraintSet.BOTTOM, sair, ConstraintSet.BOTTOM, 0)
+            connect(R.id.reply_actions, ConstraintSet.START, R.id.tv_reply_title, ConstraintSet.END, dp(16))
+            connect(R.id.reply_actions, ConstraintSet.END, R.id.btn_reply_history, ConstraintSet.START, dp(16))
+            // Sem a fileira de baixo, o texto vai da barra ate o fim da tela.
+            connect(R.id.et_reply, ConstraintSet.TOP, sair, ConstraintSet.BOTTOM, dp(4))
+            connect(R.id.et_reply, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM, dp(8))
+        }.applyTo(painel)
+        botoes.forEach { botao ->
+            botao.layoutParams = botao.layoutParams.apply { height = barra }
+            botao.setTextSize(TypedValue.COMPLEX_UNIT_SP, RESPOSTA_BOTAO_DEITADO_SP)
+        }
+        icones.forEach { it.setPadding(dp(8), dp(8), dp(8), dp(8)) }
+        binding.etReply.setTextSize(TypedValue.COMPLEX_UNIT_SP, RESPOSTA_TEXTO_DEITADO_SP)
     }
 
     private fun dp(value: Int): Int {
@@ -783,7 +880,6 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.landmarkOverlay.isVisible = linhasAtivas
             if (!linhasAtivas) binding.landmarkOverlay.clear()
             binding.btnLines.text = if (linhasAtivas) "LINHAS: ON" else "LINHAS: OFF"
-            updateFaceDiagnosticVisibility()
         }
 
         binding.btnFlip.setOnClickListener {
@@ -911,10 +1007,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
         binding.btnModeAlphabet.alpha = 1f
         binding.btnModeBody.alpha = 1f
-        updateFaceDiagnosticVisibility()
         // O estado interrogativo pertence a frase e atende os dois modos.
         binding.tvQuestionMarker.isVisible = interrogativoAtivo
-        binding.tvPhrase.text = fraseExibida()
+        mostrarFrase()
     }
 
     // ── Hold da lixeira ────────────────────────────────────────────────────
@@ -1186,7 +1281,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 fraseAnterior = frase
                 return@runOnUiThread
             }
-            binding.tvPhrase.text = fraseExibida()
+            mostrarFrase()
             binding.phraseBubble.isVisible = frase.isNotBlank()
 
             // TTS: fala o que acabou de entrar. O trecho e a pronúncia dele
@@ -1231,86 +1326,42 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 binding.tvQuestionMarker.announceForAccessibility("Pergunta detectada")
             }
             if (!isLandscapeHudCompact()) {
-                binding.tvPhrase.text = fraseExibida()
+                mostrarFrase()
             }
         }
     }
 
-    private fun onFaceDiagnosticUpdated(diagnostic: BrowDetection) {
-        activity?.runOnUiThread {
-            if (_binding == null || modoAtual != LibrasAnalyzer.Modo.CORPO) return@runOnUiThread
-            binding.tvFaceDiagnostic.text = formatFaceDiagnostic(diagnostic)
-            updateFaceDiagnosticVisibility()
+    /**
+     * Poe a frase no balao garantindo que o FIM dela aparece.
+     *
+     * O balao tinha ellipsize="start" pra, em frase comprida, sumir o comeco e
+     * ficar a palavra nova. So que com mais de uma linha o Android ignora o
+     * "start" e corta o que nao cabe na ultima -- e o que nao cabe e justamente
+     * a palavra que acabou de entrar ("...PESSOA SURDA A", sem o CONVERSAR).
+     * Entao a medida e feita aqui, com a fonte e a largura reais do balao, e
+     * qual pedaco fica e decidido no PhraseOutput.finalQueCabe.
+     */
+    private fun mostrarFrase() {
+        val tv = binding.tvPhrase
+        val texto = fraseExibida()
+        fraseNoBalao = texto
+        tv.text = texto
+        if (texto.isBlank()) return
+        tv.doOnLayout {
+            if (_binding == null || fraseNoBalao != texto) return@doOnLayout
+            val largura = tv.width - tv.totalPaddingLeft - tv.totalPaddingRight
+            if (largura <= 0) return@doOnLayout
+            val visivel = PhraseOutput.finalQueCabe(texto) { candidato ->
+                StaticLayout.Builder.obtain(candidato, 0, candidato.length, tv.paint, largura)
+                    .setLineSpacing(tv.lineSpacingExtra, tv.lineSpacingMultiplier)
+                    .setIncludePad(tv.includeFontPadding)
+                    .setBreakStrategy(tv.breakStrategy)
+                    .setHyphenationFrequency(tv.hyphenationFrequency)
+                    .build()
+                    .lineCount <= tv.maxLines
+            }
+            if (visivel != texto) tv.text = visivel
         }
-    }
-
-    private fun updateFaceDiagnosticVisibility() {
-        if (_binding == null) return
-        binding.tvFaceDiagnostic.isVisible =
-            modoAtual == LibrasAnalyzer.Modo.CORPO && linhasAtivas
-    }
-
-    private fun formatFaceDiagnostic(d: BrowDetection): String {
-        val threshold = d.thresholds
-        val progress = (d.calibrationProgress * 100f).toInt().coerceIn(0, 100)
-        val face = when (d.faceCount) {
-            0 -> "SEM ROSTO"
-            1 -> "OK >=0.50"
-            else -> "${d.faceCount} ROSTOS"
-        }
-        return buildString {
-            append("ROSTO ").append(face)
-            append("  ").append(stateLabel(d.state)).append(' ').append(progress).append("%\n")
-            append("GEO  A ").append(faceValue(d.filteredGapA))
-            append("  B ").append(faceValue(d.filteredGapB)).append('\n')
-            append("BASE A ").append(faceValue(d.baselineGapA))
-            append("  B ").append(faceValue(d.baselineGapB)).append('\n')
-            append("DELTA A ").append(faceValue(d.gapDeltaA))
-            append('/').append(faceValue(threshold?.gapEnterA))
-            append("  B ").append(faceValue(d.gapDeltaB))
-            append('/').append(faceValue(threshold?.gapEnterB)).append('\n')
-            append("IA   A ").append(faceValue(d.browOuterUpA))
-            append("  B ").append(faceValue(d.browOuterUpB))
-            append("  C ").append(faceValue(d.browInnerUp)).append('\n')
-            append("SCORE A ").append(faceValue(d.sideScoreA))
-            append("  B ").append(faceValue(d.sideScoreB)).append("  alvo 1.00\n")
-            append("POSE P ").append(faceAngle(d.pitchDegrees))
-            append(" Y ").append(faceAngle(d.yawDegrees))
-            append(" R ").append(faceAngle(d.rollDegrees)).append('\n')
-            append("DECISAO ").append(reasonLabel(d.reason))
-        }
-    }
-
-    private fun faceValue(value: Float?): String =
-        value?.let { String.format(Locale.US, "%.3f", it) } ?: "---"
-
-    private fun faceAngle(value: Float?): String =
-        value?.let { String.format(Locale.US, "%+.0f", it) } ?: "--"
-
-    private fun stateLabel(state: BrowGestureState): String = when (state) {
-        BrowGestureState.NO_FACE -> "SEM_ROSTO"
-        BrowGestureState.CALIBRATING -> "CALIBRANDO"
-        BrowGestureState.NEUTRAL -> "NEUTRO"
-        BrowGestureState.CANDIDATE_RAISE -> "CANDIDATO"
-        BrowGestureState.RAISED -> "LEVANTADA"
-        BrowGestureState.COOLDOWN -> "ESPERA"
-    }
-
-    private fun reasonLabel(reason: BrowDecisionReason): String = when (reason) {
-        BrowDecisionReason.NO_FACE -> "rosto ausente"
-        BrowDecisionReason.MULTIPLE_FACES -> "mais de um rosto"
-        BrowDecisionReason.LANDMARKS_INCOMPLETE -> "pontos incompletos"
-        BrowDecisionReason.POSE_EXCESSIVE -> "cabeca fora do angulo"
-        BrowDecisionReason.CALIBRATING -> "aprendendo seu neutro"
-        BrowDecisionReason.UNSTABLE_CALIBRATION -> "mantenha o rosto parado"
-        BrowDecisionReason.BLINK -> "piscar rejeitado"
-        BrowDecisionReason.EYES_WIDE_WITHOUT_BROW -> "olhos abertos sem sobrancelha"
-        BrowDecisionReason.BROW_DOWN -> "sobrancelha franzida"
-        BrowDecisionReason.BELOW_THRESHOLD -> "abaixo do limiar"
-        BrowDecisionReason.WAITING_DWELL -> "sustente a sobrancelha"
-        BrowDecisionReason.RAISED -> "pergunta detectada"
-        BrowDecisionReason.WAITING_RELEASE -> "aguardando baixar"
-        BrowDecisionReason.COOLDOWN -> "evitando repeticao"
     }
 
     private fun onSemMao() {
@@ -1757,6 +1808,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         fonteOculos?.parar()
         fonteOculos = null
         landscapeHud = null
+        // As medidas guardadas sao das views desta tela; a proxima tem as dela.
+        respostaNoXml = null
+        respostaCompacta = false
         _binding?.btnDeleteLetter?.removeCallbacks(limparTudoRunnable)
         holdAnimator?.cancel()
         holdAnimator = null

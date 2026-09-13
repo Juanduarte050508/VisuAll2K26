@@ -39,6 +39,46 @@ class PhraseOutputTest {
         assertEquals("   ", PhraseOutput.exibicao("   ", interrogativo = true))
     }
 
+    // ── O que cabe no balão ─────────────────────────────────────────────────
+    //
+    // Nos testes, "cabe" é contar caracteres; na tela é o StaticLayout com a
+    // fonte e a largura do balão. A decisão de QUAL pedaço fica é a mesma.
+
+    @Test
+    fun `frase que cabe no balao sai inteira`() {
+        assertEquals(
+            "O COMPUTADOR AJUDA",
+            PhraseOutput.finalQueCabe("O COMPUTADOR AJUDA") { it.length <= 25 }
+        )
+    }
+
+    @Test
+    fun `frase comprida perde o comeco e nunca a palavra nova`() {
+        // O caso do teste no celular: o balao cortava o fim e sumia CONVERSAR,
+        // justamente a palavra que tinha acabado de entrar.
+        assertEquals(
+            "… SURDA A CONVERSAR",
+            PhraseOutput.finalQueCabe("O COMPUTADOR AJUDA A PESSOA SURDA A CONVERSAR") {
+                it.length <= 25
+            }
+        )
+    }
+
+    @Test
+    fun `interrogacao continua no fim quando o comeco sai`() {
+        assertEquals("… BEM?", PhraseOutput.finalQueCabe("TUDO BEM?") { it.length <= 6 })
+    }
+
+    @Test
+    fun `palavra soletrada maior que o balao perde letras do comeco`() {
+        assertEquals("…GHIJ", PhraseOutput.finalQueCabe("ABCDEFGHIJ") { it.length <= 5 })
+    }
+
+    @Test
+    fun `frase vazia nao vira reticencias`() {
+        assertEquals("", PhraseOutput.finalQueCabe("") { false })
+    }
+
     // ── Trecho falado ───────────────────────────────────────────────────────
 
     @Test

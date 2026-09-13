@@ -27,6 +27,34 @@ internal object PhraseOutput {
     }
 
     /**
+     * O pedaço da frase que vai no balão quando ela não cabe inteira: o FIM,
+     * com "…" no lugar do começo.
+     *
+     * Quem lê precisa ver a palavra que acabou de entrar — é ela que confirma
+     * que o app entendeu o último sinal. O começo já foi lido e já foi falado.
+     * Saem palavras inteiras do começo enquanto der; se sobrar uma palavra só,
+     * maior que o balão (letras soletradas sem espaço), saem letras.
+     *
+     * [cabe] é quem mede, e fica fora daqui porque medir precisa da fonte e da
+     * largura do balão na tela.
+     */
+    fun finalQueCabe(texto: String, cabe: (String) -> Boolean): String {
+        if (texto.isBlank() || cabe(texto)) return texto
+        var resto = texto.trim()
+        while (true) {
+            val espaco = resto.indexOf(' ')
+            if (espaco < 0) break
+            resto = resto.substring(espaco + 1).trimStart()
+            if (cabe("… $resto")) return "… $resto"
+        }
+        while (resto.length > 1) {
+            resto = resto.substring(1)
+            if (cabe("…$resto")) return "…$resto"
+        }
+        return "…$resto"
+    }
+
+    /**
      * O trecho a ser falado quando a frase cresce. String vazia = não falar
      * nada.
      *

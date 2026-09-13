@@ -135,24 +135,6 @@
         app:layout_constraintTop_toBottomOf="@id/btn_exit_libras"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_face_diagnostic"
-        android:layout_width="240dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/vf_bg_chip"
-        android:elevation="9dp"
-        android:fontFamily="monospace"
-        android:importantForAccessibility="no"
-        android:maxLines="8"
-        android:padding="7dp"
-        android:textColor="@color/text_primary"
-        android:textSize="8sp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btn_exit_libras"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <com.visuall.app.ui.ScanFrameView
         android:id="@+id/scan_frame"
         android:layout_width="430dp"
@@ -242,7 +224,6 @@
             android:id="@+id/tv_phrase"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="start"
             android:gravity="center"
             android:maxLines="2"
             android:minHeight="42dp"
