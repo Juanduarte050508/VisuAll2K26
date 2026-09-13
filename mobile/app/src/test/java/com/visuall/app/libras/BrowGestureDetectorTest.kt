@@ -138,6 +138,46 @@ class BrowGestureDetectorTest {
         assertTrue(recovered.markerVisible)
     }
 
+    @Test
+    fun `evento facial preserva pergunta na frase ao baixar e alternar trechos`() {
+        val detector = BrowGestureDetector(mode = BrowRaiseMode.BOTH, config = fastConfig)
+        val sentence = SentenceBuilder().apply {
+            iniciarTrechoCorpo()
+            definirTrechoCorpo("PESSOA")
+        }
+        calibrate(detector)
+        var events = 0
+        fun deliver(frame: BrowFrameFeatures): BrowDetection {
+            val result = detector.update(frame)
+            if (result.triggered && sentence.marcarInterrogativa()) events++
+            return result
+        }
+
+        deliver(raised(1_100L))
+        deliver(raised(1_400L))
+        deliver(raised(1_650L))
+        deliver(neutral(1_900L))
+        val released = deliver(neutral(2_150L))
+        assertEquals(1, events)
+        assertFalse(released.markerVisible)
+        assertEquals("PESSOA?", PhraseOutput.exibicao(sentence.frase, sentence.interrogativa))
+
+        // Mesmas operacoes da troca de modo, sem depender da camera Android.
+        detector.reset()
+        sentence.encerrarTrechoCorpo()
+        sentence.adicionarEspaco()
+        sentence.aceitarLetra("A")
+        sentence.iniciarTrechoCorpo()
+        sentence.definirTrechoCorpo("AJUDAR")
+        val displayed = PhraseOutput.exibicao(sentence.frase, sentence.interrogativa)
+        assertEquals("PESSOA A AJUDAR?", displayed)
+        // A leitura da frase inteira adicionada na main recebe a pontuacao.
+        assertEquals("pessoa a ajudar?", PhraseOutput.textoParaVoz(displayed))
+        assertTrue(sentence.removerInterrogacao())
+        assertEquals("PESSOA A AJUDAR", sentence.frase)
+        assertFalse(sentence.interrogativa)
+    }
+
     private fun calibrate(
         detector: BrowGestureDetector,
         neutralGap: Float = 0.30f
