@@ -8,16 +8,26 @@ name: Limpar artefatos
 # recusa qualquer upload ("Artifact storage quota has been hit"), e todo build
 # ficou vermelho mesmo com o app compilando e os testes passando.
 #
-# Roda sozinho toda segunda de manha, sempre que este arquivo muda, e pelo botao
-# "Run workflow" na aba Actions. Depois de apagar, o GitHub leva de 6 a 12 horas
-# pra recalcular a cota.
+# Roda sozinho toda segunda de manha, quando este arquivo muda na main, e pelo
+# botao "Run workflow" na aba Actions. Depois de apagar, o GitHub leva de 6 a 12
+# horas pra recalcular a cota.
+#
+# Os artefatos sao do repositorio inteiro, nao de uma branch: rodar em cada
+# branch so repete o trabalho. Na primeira vez rodou em duas branches ao mesmo
+# tempo, uma apagou o que a outra ia apagar e a segunda ficou vermelha. Por
+# isso: push so da main, uma execucao por vez, e "ja apagado" nao e erro.
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 9 * * 1"
   push:
+    branches: [main]
     paths:
       - ".github/workflows/limpar-artefatos.yml"
+
+concurrency:
+  group: limpar-artefatos
+  cancel-in-progress: false
 
 # Apagar artefato exige escrita em Actions; o token padrao pode vir so leitura.
 permissions:
@@ -41,11 +51,17 @@ jobs:
               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             let liberado = 0;
             for (const a of vivos.slice(MANTER)) {
-              await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: a.id,
-              });
+              try {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: a.id,
+                });
+              } catch (erro) {
+                if (erro.status !== 404) throw erro;
+                core.info(`ja tinha sido apagado: ${a.name} #${a.id}`);
+                continue;
+              }
               liberado += a.size_in_bytes;
               core.info(`apagado: ${a.name} #${a.id} de ${a.created_at} (${Math.round(a.size_in_bytes / 1048576)} MB)`);
             }
