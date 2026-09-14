@@ -50,9 +50,49 @@ internal class RedeDosOculos(
 
     private var inscricao: ConnectivityManager.NetworkCallback? = null
 
-    fun ligar() {
-        if (inscricao != null) return
+    /** Entre ligar() e desligar(). Fora disso nenhum pedido novo pode sair. */
+    @Volatile
+    private var ligada = false
 
+    @Volatile
+    private var ultimoPedidoMs = 0L
+
+    fun ligar() {
+        synchronized(trava) {
+            if (ligada) return
+            ligada = true
+            pedir()
+        }
+    }
+
+    fun desligar() {
+        synchronized(trava) {
+            ligada = false
+            soltar()
+            rede = null
+        }
+    }
+
+    /**
+     * Joga fora o pedido atual e faz outro.
+     *
+     * Um pedido que nomeia a rede vale por UMA conexao: se ela cai, o Android
+     * nao volta sozinho. Medido no aparelho: a placa trocou de canal, o app
+     * registrou "perdi a rede", e mesmo com a rede de volta no ar ficou dizendo
+     * "ainda nao achei o Wi-Fi dos oculos" sem nunca reconectar -- so saindo e
+     * entrando de novo no modo oculos. A placa reiniciando, por bateria fraca
+     * ou mau contato, teria o mesmo fim no meio de uma conversa.
+     */
+    private fun repedir(motivo: String) {
+        synchronized(trava) {
+            if (!ligada) return
+            Log.i(TAG, "pedindo a rede de novo: $motivo")
+            soltar()
+            pedir()
+        }
+    }
+
+    private fun pedir() {
         val construtor = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
             // A linha que faz a diferenca. Com internet como requisito, o
@@ -92,16 +132,20 @@ internal class RedeDosOculos(
                 if (rede == network) {
                     Log.i(TAG, "perdi a rede $network")
                     rede = null
+                    repedir("a rede caiu")
                 }
             }
 
             override fun onUnavailable() {
                 // Com uma rede nomeada isto quer dizer: a placa nao esta no ar,
-                // ou a pessoa recusou a caixa de confirmacao do Android.
+                // ou a pessoa recusou a caixa de confirmacao do Android. O
+                // abrir() pede de novo depois de PRAZO_REPEDIR_MS, e nao aqui:
+                // repedir na hora abriria a caixa sem parar pra quem recusou.
                 Log.w(TAG, "o sistema nao entregou rede nenhuma")
             }
         }
 
+        ultimoPedidoMs = System.currentTimeMillis()
         try {
             // requestNetwork, e nao registerNetworkCallback: o primeiro diz ao
             // sistema que este app QUER a rede no ar. So observar nao impede o
@@ -117,7 +161,7 @@ internal class RedeDosOculos(
         }
     }
 
-    fun desligar() {
+    private fun soltar() {
         inscricao?.let {
             // Sem isto o pedido continua de pe depois de sair dos oculos, e o
             // sistema segue segurando um Wi-Fi sem internet por nossa causa.
@@ -125,7 +169,6 @@ internal class RedeDosOculos(
                 .onFailure { erro -> Log.w(TAG, "falha ao soltar a rede", erro) }
         }
         inscricao = null
-        rede = null
     }
 
     /**
@@ -136,9 +179,18 @@ internal class RedeDosOculos(
      * existe pra impedir, e falharia longe daqui, como "ninguem atende". O
      * laco do [MjpegClient] tenta de novo sozinho, e essa espera dura o tempo
      * de o Wi-Fi conectar.
+     *
+     * Se a rede nao aparece por muito tempo, o pedido e refeito: o sistema pode
+     * ter desistido dele em silencio (ver [repedir]).
      */
     fun abrir(url: String): MjpegClient.Conexao {
-        val n = esperaRede() ?: throw IOException(SEM_REDE)
+        val n = esperaRede()
+        if (n == null) {
+            if (System.currentTimeMillis() - ultimoPedidoMs >= PRAZO_REPEDIR_MS) {
+                repedir("a rede nao apareceu em ${PRAZO_REPEDIR_MS / 1000} s")
+            }
+            throw IOException(SEM_REDE)
+        }
         return MjpegClient.abrirHttp(url) { endereco: URL -> n.openConnection(endereco) }
     }
 
@@ -173,6 +225,13 @@ internal class RedeDosOculos(
          * pra avisar de um problema que e real (celular fora do Wi-Fi).
          */
         private const val PRAZO_REDE_MS = 3_000L
+
+        /**
+         * Sem rede ha este tempo desde o ultimo pedido, pede de novo. Longe o
+         * bastante pra nao abrir a caixa de confirmacao do Android sem parar,
+         * perto o bastante pra os oculos voltarem sozinhos numa conversa.
+         */
+        private const val PRAZO_REPEDIR_MS = 15_000L
 
         /** Reconhecido pela [MensagemDeErro]; mudar aqui muda o aviso na tela. */
         const val SEM_REDE = "ainda nao achei o Wi-Fi dos oculos"

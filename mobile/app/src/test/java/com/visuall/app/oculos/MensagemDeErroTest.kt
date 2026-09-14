@@ -54,6 +54,10 @@ class MensagemDeErroTest {
         assertEquals(
             MensagemDeErro.emPortugues("Read timed out"),
             MensagemDeErro.emPortugues("Software caused connection abort"))
+        // O motivo exato que o logcat mostrou quando a placa soltou a camera.
+        assertEquals(
+            MensagemDeErro.emPortugues("Read timed out"),
+            MensagemDeErro.emPortugues("EOFException"))
     }
 
     /** O engano mais comum: digitar o endereco sem o /stream no fim. */

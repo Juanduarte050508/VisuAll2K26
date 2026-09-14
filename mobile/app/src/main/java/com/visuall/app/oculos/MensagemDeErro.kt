@@ -38,8 +38,10 @@ internal object MensagemDeErro {
 
             // Conectou e parou de vir imagem: distancia, bateria ou a placa
             // travou. Reconectar sozinho ja esta acontecendo.
+            // EOFException e a placa encerrando o stream no meio -- visto ao
+            // soltar a camera -- e antes caia na frase generica.
             "timeout" in m || "timed out" in m || "connection abort" in m ||
-                "connection reset" in m || "unexpected end" in m ->
+                "connection reset" in m || "unexpected end" in m || "eofexception" in m ->
                 "A imagem parou de chegar. Chegue mais perto dos oculos."
 
             // Respondeu, mas nao com video. Quase sempre falta o /stream.
