@@ -1,0 +1,52 @@
+name: Limpar artefatos
+
+# Apaga os APKs antigos guardados pelo Android Build e deixa so os mais
+# recentes.
+#
+# Existe porque a cota de armazenamento de artefatos da conta encheu em
+# 12/09/2026: 24 APKs de ~140 MB guardados por 90 dias. Com ela cheia o GitHub
+# recusa qualquer upload ("Artifact storage quota has been hit"), e todo build
+# ficou vermelho mesmo com o app compilando e os testes passando.
+#
+# Roda sozinho toda segunda de manha, sempre que este arquivo muda, e pelo botao
+# "Run workflow" na aba Actions. Depois de apagar, o GitHub leva de 6 a 12 horas
+# pra recalcular a cota.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+  push:
+    paths:
+      - ".github/workflows/limpar-artefatos.yml"
+
+# Apagar artefato exige escrita em Actions; o token padrao pode vir so leitura.
+permissions:
+  actions: write
+
+jobs:
+  limpar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apagar artefatos antigos
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MANTER = 3;
+            const artefatos = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+            const vivos = artefatos
+              .filter(a => !a.expired)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            let liberado = 0;
+            for (const a of vivos.slice(MANTER)) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: a.id,
+              });
+              liberado += a.size_in_bytes;
+              core.info(`apagado: ${a.name} #${a.id} de ${a.created_at} (${Math.round(a.size_in_bytes / 1048576)} MB)`);
+            }
+            core.info(`mantidos ${Math.min(MANTER, vivos.length)} de ${vivos.length}; liberados ${Math.round(liberado / 1048576)} MB`);
