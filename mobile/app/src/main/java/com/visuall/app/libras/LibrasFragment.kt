@@ -713,9 +713,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnBloquear.visibility =
             if (visible && usandoOculos) View.VISIBLE else View.GONE
         binding.controlsRow?.visibility = visibility
-        binding.chipResult.visibility = if (visible) View.INVISIBLE else View.GONE
-        binding.progressConfidence.visibility = if (visible) View.INVISIBLE else View.GONE
-        binding.tvFeedback.visibility = if (visible) View.INVISIBLE else View.GONE
+        // GONE mesmo com o HUD visivel: sem conteudo eles nao ocupam lugar na
+        // fileira da lixeira. Os callbacks mostram de novo quando houver o que.
+        binding.chipResult.visibility = View.GONE
+        binding.progressConfidence.visibility = View.GONE
+        binding.tvFeedback.visibility = View.GONE
         binding.progressClear.visibility = View.GONE
 
         // Estas tres NAO seguem o `visible` do HUD: elas tem estado proprio
@@ -724,7 +726,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         // onResume chama este metodo dentro de um post(), ou seja DEPOIS de o
         // resultado da fala ja ter preenchido a caixa. A conversa na tela
         // precisa durar ate alguem apagar, nao ate a proxima troca de layout.
-        binding.phraseBubble.isVisible = visible && fraseBase.isNotBlank()
+        binding.phraseBubble.isVisible = visible && balaoTemConteudo()
         binding.replyPanel.isVisible =
             painelRespostaAberto && (visible || respostaForcouPaisagem)
         atualizarBotaoResponder()
@@ -867,15 +869,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
 
         binding.btnModeAlphabet.setOnClickListener {
-            modoAtual = LibrasAnalyzer.Modo.ALFABETO
-            librasAnalyzer?.setModo(modoAtual)
-            updateModeButtons()
+            trocarModo(LibrasAnalyzer.Modo.ALFABETO)
         }
 
         binding.btnModeBody.setOnClickListener {
-            modoAtual = LibrasAnalyzer.Modo.CORPO
-            librasAnalyzer?.setModo(modoAtual)
-            updateModeButtons()
+            trocarModo(LibrasAnalyzer.Modo.CORPO)
             Toast.makeText(requireContext(), "Modo corpo ativo", Toast.LENGTH_SHORT).show()
         }
 
@@ -969,6 +967,32 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
     }
 
+    /**
+     * Troca entre ALFABETO e CORPO pelo botao, e a troca comeca uma frase nova:
+     * texto e interrogacao zeram.
+     *
+     * A limpeza fica aqui, no toque, e nao no setModo do analyzer: o setModo
+     * tambem roda toda vez que a camera religa (trocar de lente, sair dos
+     * oculos), e ali apagar a conversa seria perder texto sem ninguem pedir.
+     * Tocar no modo que ja esta ativo nao apaga nada.
+     */
+    private fun trocarModo(novo: LibrasAnalyzer.Modo) {
+        val mudou = novo != modoAtual
+        modoAtual = novo
+        librasAnalyzer?.setModo(modoAtual)
+        if (mudou) {
+            val analyzer = librasAnalyzer
+            if (analyzer != null) {
+                analyzer.limparFrase()
+            } else {
+                // Camera ainda abrindo: sem analyzer, a tela zera do mesmo jeito.
+                onInterrogativoAtualizado(false)
+                onFraseAtualizada("")
+            }
+        }
+        updateModeButtons()
+    }
+
     // Guardada pra a tela da camera voltar na mesma lente. Ver LenteDaCamera.
     private fun trocarLente() {
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
@@ -1016,7 +1040,6 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnModeAlphabet.alpha = 1f
         binding.btnModeBody.alpha = 1f
         // O estado interrogativo pertence a frase e atende os dois modos.
-        binding.tvQuestionMarker.isVisible = interrogativoAtivo
         mostrarFrase()
     }
 
@@ -1236,13 +1259,25 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
                 binding.progressConfidence.progressTintList = confidenceTint(confianca)
                 binding.progressConfidence.progressBackgroundTintList = TINT_CONFIANCA_FUNDO
+                binding.tvFeedback.visibility = View.GONE
             } else {
                 ultimaLetraChip = ""
-                binding.chipResult.visibility = View.INVISIBLE
-                binding.progressConfidence.visibility = View.INVISIBLE
+                binding.chipResult.visibility = View.GONE
+                binding.progressConfidence.visibility = View.GONE
                 binding.progressConfidence.progress = 0
+                mostrarAvisoSeCouber()
             }
         }
+    }
+
+    /**
+     * O aviso so aparece sem letra na tela: e uma coisa por vez no lugar do
+     * texto da fileira da lixeira. Com letra, a cor da moldura ja diz se o
+     * sinal esta firme.
+     */
+    private fun mostrarAvisoSeCouber() {
+        binding.tvFeedback.isVisible =
+            binding.tvFeedback.text.isNotBlank() && !binding.chipResult.isVisible
     }
 
     private fun confidenceTint(confianca: Float): ColorStateList =
@@ -1259,15 +1294,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 binding.tvFeedback.visibility = View.GONE
                 return@runOnUiThread
             }
-            if (mensagem.isBlank()) {
-                binding.tvFeedback.visibility = View.INVISIBLE
-                binding.scanFrame.setFeedbackLevel(ScanFrameView.FEEDBACK_NEUTRO)
-                return@runOnUiThread
-            }
-            binding.tvFeedback.text = mensagem
-            binding.tvFeedback.visibility = View.VISIBLE
-            binding.tvFeedback.setTextColor(feedbackColor(nivel))
+            // Sem texto nao quer dizer sem estado: o sinal firme chega assim, e a
+            // moldura precisa ficar verde mesmo sem balao.
             binding.scanFrame.setFeedbackLevel(nivel)
+            binding.tvFeedback.text = mensagem
+            binding.tvFeedback.setTextColor(feedbackColor(nivel))
+            mostrarAvisoSeCouber()
         }
     }
 
@@ -1290,7 +1322,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 return@runOnUiThread
             }
             mostrarFrase()
-            binding.phraseBubble.isVisible = frase.isNotBlank()
+            binding.phraseBubble.isVisible = balaoTemConteudo()
 
             // TTS: fala o que acabou de entrar. O trecho e a pronúncia dele
             // são decididos no PhraseOutput — textoParaVoz é o que garante que
@@ -1312,6 +1344,13 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     private fun fraseExibida(): String = PhraseOutput.exibicao(fraseBase, interrogativoAtivo)
 
     /**
+     * O balao aparece com frase OU com a pergunta ligada. So com frase, a
+     * sobrancelha levantada antes do primeiro sinal (o normal no modo corpo)
+     * nao aparecia em lugar nenhum. Ver PhraseOutput.exibicao.
+     */
+    private fun balaoTemConteudo(): Boolean = fraseBase.isNotBlank() || interrogativoAtivo
+
+    /**
      * Le a frase inteira em voz alta.
      *
      * Passa pelo textoParaVoz igual ao trecho de cada sinal: e ele que baixa a
@@ -1329,12 +1368,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             if (_binding == null) return@runOnUiThread
             if (interrogativoAtivo == ativo) return@runOnUiThread
             interrogativoAtivo = ativo
-            binding.tvQuestionMarker.isVisible = ativo
+            Log.i("Libras", "interrogacao ${if (ativo) "ligada" else "desligada"} (modo $modoAtual)")
             if (ativo) {
-                binding.tvQuestionMarker.announceForAccessibility("Pergunta detectada")
+                // Sem simbolo solto no canto da tela: o "?" vai no fim da frase.
+                // O leitor de tela continua sendo avisado.
+                binding.root.announceForAccessibility("Pergunta detectada")
             }
             if (!isLandscapeHudCompact()) {
                 mostrarFrase()
+                binding.phraseBubble.isVisible = balaoTemConteudo()
             }
         }
     }
@@ -1375,9 +1417,10 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     private fun onSemMao() {
         activity?.runOnUiThread {
             if (_binding == null) return@runOnUiThread
-            binding.chipResult.visibility = if (isLandscapeHudCompact()) View.GONE else View.INVISIBLE
-            binding.progressConfidence.visibility = if (isLandscapeHudCompact()) View.GONE else View.INVISIBLE
+            binding.chipResult.visibility = View.GONE
+            binding.progressConfidence.visibility = View.GONE
             binding.progressConfidence.progress = 0
+            if (!isLandscapeHudCompact()) mostrarAvisoSeCouber()
             // Mesma protecao do onGestoLimpar: enquanto o dedo segura a
             // lixeira, a barra e DELE.
             //

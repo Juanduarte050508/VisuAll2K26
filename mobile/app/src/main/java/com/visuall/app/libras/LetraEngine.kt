@@ -164,7 +164,10 @@ internal class LetraEngine(
         if (calibrationTarget != null) return
 
         val mensagem = when {
-            prediction.letra != "-" && prediction.confianca >= 0.92f -> "SINAL ESTAVEL"
+            // Sinal firme nao tem texto: a moldura fica verde, e o chip mostra a
+            // letra e a confianca. "SINAL ESTAVEL" repetia o que o verde ja diz,
+            // e o balao dele cobria o chip da letra.
+            prediction.letra != "-" && prediction.confianca >= 0.92f -> ""
             prediction.letra != "-" && prediction.confianca >= 0.82f -> "SEGURE MAIS FIRME"
             movimento > LibrasAnalyzer.LIMIAR_MOVIMENTO -> "MOVIMENTO ALTO"
             prediction.confianca >= 0.68f -> "QUASE: AJUSTE ANGULO"

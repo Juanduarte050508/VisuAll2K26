@@ -18,9 +18,16 @@ internal object PhraseOutput {
      * Porta de montar_exibicao (computer/linear/backend/app.py). O "?" é só apresentação:
      * a frase guardada continua sem ele, senão apagar uma letra deixaria o "?"
      * preso no meio do texto.
+     *
+     * Frase vazia com a sobrancelha levantada mostra "?" sozinho. O Python não
+     * mostrava nada, e o app tinha um ícone "?" no canto da tela pra esse caso.
+     * O ícone saiu, porque nada deve ficar fora da caixa de texto, e sem esta
+     * regra o modo corpo parecia não reconhecer a pergunta: nele a sobrancelha
+     * costuma vir antes do primeiro sinal, com a frase ainda vazia.
      */
     fun exibicao(base: String, interrogativo: Boolean): String {
-        if (!interrogativo || base.isBlank()) return base
+        if (!interrogativo) return base
+        if (base.isBlank()) return "?"
         val limpo = base.trimEnd()
         // Não duplica se a pessoa já escreveu "?" à mão.
         return if (limpo.endsWith("?")) base else "$limpo?"

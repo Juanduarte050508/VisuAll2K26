@@ -19,19 +19,26 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
   tela do Alfabeto. Nenhum limiar facial ou de mao foi alterado. Status:
   **implementado, aguardando validacao no aparelho**.
 
-- **A frase sumia ao alternar Corpo/Alfabeto** — a troca agora reinicia somente
-  os estados temporais dos reconhecedores. O texto e a interrogacao pertencem a
-  uma unica conversa e permanecem na tela. Como o tradutor corporal recalcula
-  todos os sinais da sessao atual, ele substitui apenas esse trecho e preserva
-  o que veio do Alfabeto ou de uma passagem anterior pelo Corpo. Status:
-  **corrigido, aguardando validacao no aparelho**.
+- **Trocar Corpo/Alfabeto comeca uma frase nova** — decisao revista a pedido do
+  dono do projeto: tocar no outro modo zera texto e interrogacao, tanto com a
+  camera do celular quanto com a dos oculos. A limpeza fica no toque do botao
+  (`LibrasFragment.trocarModo`), e nao no `setModo`, porque o `setModo` tambem
+  roda quando a camera religa (trocar de lente, sair dos oculos) e ali a
+  conversa nao pode sumir. Tocar no modo ja ativo nao apaga nada. Substitui a
+  entrada anterior, que mantinha a frase entre os modos. Status:
+  **implementado, aguardando validacao no aparelho**.
+
+- **Interrogacao visivel com a frase vazia** — `PhraseOutput.exibicao` passa a
+  mostrar `?` sozinho na caixa de texto. No Corpo a sobrancelha costuma vir antes
+  do primeiro sinal, e sem isto a pergunta reconhecida nao aparecia em lugar
+  nenhum. Nenhum limiar facial foi alterado. Status: **implementado**.
 
 - **A interrogacao sumia quando a sobrancelha abaixava** — o detector agora
   entrega um evento de pergunta e o `SentenceBuilder` guarda esse estado ate
   uma acao explicita. A lixeira remove primeiro o `?`, e limpar a frase tambem
-  o remove. O indicador separado perdeu fundo, elevacao, foco e
-  clique para nao parecer um botao. Status: **corrigido, aguardando validacao no
-  aparelho**.
+  o remove. O indicador `?` separado, no canto da tela, foi retirado: a pergunta
+  aparece so no fim do texto, dentro da caixa. Status: **corrigido, aguardando
+  validacao no aparelho**.
 
 - **Deteccao temporal de sobrancelhas no modo CORPO** — a comparacao fixa de
   distancia foi substituida por baseline neutro pessoal (2 s, minimo 10

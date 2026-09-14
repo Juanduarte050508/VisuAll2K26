@@ -33,10 +33,17 @@ class PhraseOutputTest {
     }
 
     @Test
-    fun `frase vazia nao vira so uma interrogacao`() {
-        // Sobrancelha levantada sem nada escrito não deve mostrar "?" solto.
-        assertEquals("", PhraseOutput.exibicao("", interrogativo = true))
-        assertEquals("   ", PhraseOutput.exibicao("   ", interrogativo = true))
+    fun `frase vazia com a sobrancelha levantada mostra a interrogacao`() {
+        // No modo corpo a sobrancelha costuma vir antes do primeiro sinal. Sem
+        // o "?" na caixa, e sem o antigo ícone do canto, a pergunta reconhecida
+        // não aparecia em lugar nenhum.
+        assertEquals("?", PhraseOutput.exibicao("", interrogativo = true))
+        assertEquals("?", PhraseOutput.exibicao("   ", interrogativo = true))
+    }
+
+    @Test
+    fun `frase vazia sem marcador continua vazia`() {
+        assertEquals("", PhraseOutput.exibicao("", interrogativo = false))
     }
 
     // ── O que cabe no balão ─────────────────────────────────────────────────

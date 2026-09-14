@@ -116,25 +116,6 @@
         app:layout_constraintStart_toEndOf="@id/tv_live"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_question_marker"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
-        android:clickable="false"
-        android:contentDescription="Pergunta detectada"
-        android:focusable="false"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:text="?"
-        android:textColor="@color/gold_primary"
-        android:textSize="36sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btn_exit_libras"
-        app:layout_constraintEnd_toEndOf="parent" />
-
     <com.visuall.app.ui.ScanFrameView
         android:id="@+id/scan_frame"
         android:layout_width="430dp"

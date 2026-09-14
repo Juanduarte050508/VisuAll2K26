@@ -199,26 +199,6 @@
         app:layout_constraintBottom_toBottomOf="@id/btn_exit_libras"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Simbolo informativo, inclusive sem frase. Nao e botao nem recebe clique. -->
-    <TextView
-        android:id="@+id/tv_question_marker"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="14dp"
-        android:clickable="false"
-        android:contentDescription="Pergunta detectada"
-        android:focusable="false"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:text="?"
-        android:textColor="@color/gold_primary"
-        android:textSize="40sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btn_history"
-        app:layout_constraintEnd_toEndOf="parent" />
-
     <!--
         A moldura de feedback (vermelha, amarela, verde) nas bordas da imagem.
 
@@ -238,43 +218,15 @@
         app:layout_constraintStart_toStartOf="@id/preview_view"
         app:layout_constraintEnd_toEndOf="@id/preview_view" />
 
-    <TextView
-        android:id="@+id/chip_result"
-        android:layout_width="wrap_content"
-        android:layout_height="42dp"
-        android:layout_marginBottom="7dp"
-        android:background="@drawable/vf_bg_chip"
-        android:gravity="center"
-        android:minWidth="132dp"
-        android:paddingHorizontal="22dp"
-        android:text="-   0% conf."
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@id/progress_confidence"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <ProgressBar
-        android:id="@+id/progress_confidence"
-        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-        android:layout_width="168dp"
-        android:layout_height="5dp"
-        android:layout_marginBottom="8dp"
-        android:max="100"
-        android:progress="0"
-        android:progressTint="@color/gold_primary"
-        android:progressBackgroundTint="#33242424"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toBottomOf="@id/scan_frame"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
     <!--
-        Feedback, REPETIR e apagar ficam na MESMA linha: os tres falam da
+        Letra, feedback, REPETIR e apagar ficam na MESMA linha: todos falam da
         letra que acabou de ser lida, entao ler e agir acontece sem o olho
         pular de uma ponta a outra da tela.
+
+        Uma coisa por vez no lugar do texto: com letra reconhecida aparece o
+        chip dela (letra, confianca e a barra), sem letra aparece o aviso, e o
+        que nao tem nada a dizer sai do layout (GONE). Com INVISIBLE sobrava um
+        buraco do tamanho do aviso vazio, e a lixeira ficava empurrada de lado.
     -->
     <LinearLayout
         android:id="@+id/feedback_row"
@@ -304,7 +256,42 @@
             android:textColor="@color/text_primary"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:visibility="invisible" />
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/chip_result"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginHorizontal="4dp"
+                android:background="@drawable/vf_bg_chip"
+                android:gravity="center"
+                android:minWidth="132dp"
+                android:paddingHorizontal="20dp"
+                android:text="-   0% conf."
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/progress_confidence"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginHorizontal="18dp"
+                android:layout_marginTop="4dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@color/gold_primary"
+                android:progressBackgroundTint="#33242424"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/btn_confirm_letter"
