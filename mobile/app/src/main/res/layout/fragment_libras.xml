@@ -225,9 +225,9 @@
         Ficava presa a tela, com margens, e os cantos caiam fora da imagem:
         na faixa preta, ou por cima da camera, sem marcar onde ela enxerga.
         Presa ao preview_view ela fica exatamente na borda da captura, nas duas
-        fontes e nos dois formatos: o preview_view tem a proporcao escolhida
-        (3:4 ou 9:16, ver applyPreviewAspectRatio), e tanto a camera do celular
-        quanto a imagem dos oculos preenchem ele inteiro.
+        fontes e nos dois formatos: o preview_view e a area da imagem (a caixa
+        3:4, ou a tela inteira em 16:9; ver applyPreviewAspectRatio), e tanto a
+        camera do celular quanto a imagem dos oculos preenchem ele inteiro.
     -->
     <com.visuall.app.ui.ScanFrameView
         android:id="@+id/scan_frame"

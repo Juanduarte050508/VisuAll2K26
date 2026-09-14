@@ -58,6 +58,7 @@ import com.visuall.app.oculos.MjpegClient
 import com.visuall.app.oculos.MontagemDosOculos
 import com.visuall.app.oculos.NetworkStreamSource
 import com.visuall.app.ui.EncaixeDeQuadro
+import com.visuall.app.ui.LenteDaCamera
 import com.visuall.app.ui.ProporcaoDaCamera
 import com.visuall.app.ui.ScanFrameView
 import com.visuall.app.ui.compose.LibrasLandscapeHud
@@ -230,6 +231,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         cameraExecutor = Executors.newSingleThreadExecutor()
+        // A mesma lente da tela da camera: quem estava na traseira continua
+        // nela. Ver LenteDaCamera.
+        lensFacing = LenteDaCamera.lente(requireContext())
         tts = TextToSpeech(requireContext(), this)
         historyStore.load()
         view.post {
@@ -535,14 +539,14 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
      *
      * Com 4:3 escolhido, a preview passa a ser uma caixa 3:4 centrada: o
      * quadro aparece inteiro, sem corte e sem ampliacao, do mesmo jeito que na
-     * tela da camera. Com 16:9, uma caixa 9:16 centrada, e o fillCenter corta
-     * as laterais do quadro 4:3 pra caber nela.
+     * tela da camera. Com 16:9, a preview enche a tela e o fillCenter corta o
+     * que sobra, que e o que a tela da camera faz nesse modo. Uma caixa 9:16
+     * centrada foi tentada e saiu: deixava faixas pretas em cima e embaixo.
      *
-     * A caixa e tambem onde fica a moldura de feedback (vermelha, amarela,
-     * verde): ela esta presa as bordas do preview_view no XML. Por isso o 16:9
-     * tem razao propria e nao enche a tela -- enchendo, a borda da imagem seria
-     * a borda da tela, e a moldura iria parar embaixo dos botoes. A imagem dos
-     * oculos ocupa a mesma caixa (centerCrop), entao vale pras duas fontes.
+     * A moldura de feedback (vermelha, amarela, verde) esta presa as bordas do
+     * preview_view no XML, entao marca a borda da imagem nos dois formatos: em
+     * 4:3 a caixa, em 16:9 a tela. A imagem dos oculos ocupa a mesma area
+     * (centerCrop), entao vale pras duas fontes.
      *
      * O que NAO muda e a analise: ela continua pedindo 4:3 sempre, porque e a
      * geometria em que o modelo foi treinado (ver aspectX no LibrasAnalyzer).
@@ -736,12 +740,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             setContent {
                 LibrasLandscapeHud(
                     onExitClick = { exitLibrasMode() },
-                    onFlipClick = {
-                        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
-                            CameraSelector.LENS_FACING_BACK
-                        else CameraSelector.LENS_FACING_FRONT
-                        scheduleBindCamera(180L)
-                    }
+                    onFlipClick = { trocarLente() }
                 )
             }
         }
@@ -887,12 +886,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             binding.btnLines.text = if (linhasAtivas) "LINHAS: ON" else "LINHAS: OFF"
         }
 
-        binding.btnFlip.setOnClickListener {
-            lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
-                CameraSelector.LENS_FACING_BACK
-            else CameraSelector.LENS_FACING_FRONT
-            scheduleBindCamera(180L)
-        }
+        binding.btnFlip.setOnClickListener { trocarLente() }
 
         binding.btnOculos.setOnClickListener {
             if (usandoOculos) desligarOculos()
@@ -973,6 +967,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.btnReplyHistory.setOnClickListener {
             abrirHistorico("RESPOSTA", "Respostas")
         }
+    }
+
+    // Guardada pra a tela da camera voltar na mesma lente. Ver LenteDaCamera.
+    private fun trocarLente() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
+            CameraSelector.LENS_FACING_BACK
+        else CameraSelector.LENS_FACING_FRONT
+        LenteDaCamera.guardar(requireContext(), lensFacing)
+        scheduleBindCamera(180L)
     }
 
     private fun abrirHistorico(origem: String, titulo: String) {
@@ -1555,8 +1558,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.previewView.visibility = View.INVISIBLE
         binding.ivOculos.isVisible = true
         // A ImageView dos oculos usa centerCrop, igual ao fillCenter da
-        // PreviewView: a imagem enche a area da camera, que tem a proporcao
-        // escolhida (3:4 ou 9:16), e o que sobra sai. E isso que deixa a
+        // PreviewView: a imagem enche a area da camera (a caixa 3:4, ou a tela
+        // inteira em 16:9), e o que sobra sai. E isso que deixa a
         // moldura de feedback na borda da imagem nas duas fontes. O quadro
         // ANALISADO continua inteiro, como na camera do celular -- o corte e
         // so de tela. O desenho dos landmarks precisa do mesmo encaixe da

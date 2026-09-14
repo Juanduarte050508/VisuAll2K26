@@ -35,16 +35,16 @@ internal object ProporcaoDaCamera {
 
     /**
      * A razao que a area da camera no modo Libras deve ter, no formato que o
-     * ConstraintLayout entende.
+     * ConstraintLayout entende, ou null para ocupar a tela inteira.
      *
      * "H,3:4" quer dizer: a altura sai da largura, tres de largura para quatro
-     * de altura -- o quadro 4:3 do sensor de pe. "H,9:16" e o 16:9 de pe.
+     * de altura -- o quadro 4:3 do sensor de pe. Em 16:9, tela inteira, e o
+     * fillCenter da PreviewView corta o que sobra, como na tela da camera.
      *
-     * Em 16:9 era null, a area enchia a tela e o corte ficava por conta do
-     * fillCenter. So que ai a borda da imagem era a borda da TELA, e a moldura
-     * de feedback, presa a essa area, ia parar embaixo dos botoes. Com a razao
-     * explicita a area e um 16:9 de verdade, e a moldura marca a borda dele.
+     * Houve uma versao com "H,9:16" em 16:9. A caixa centrada deixava faixas
+     * pretas em cima e embaixo, que a tela da camera nao tem, e a pessoa via o
+     * modo Libras "cortar" a imagem ao entrar.
      */
-    fun razaoDaPreview(quatroPorTres: Boolean): String =
-        if (quatroPorTres) "H,3:4" else "H,9:16"
+    fun razaoDaPreview(quatroPorTres: Boolean): String? =
+        if (quatroPorTres) "H,3:4" else null
 }

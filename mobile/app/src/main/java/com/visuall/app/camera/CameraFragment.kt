@@ -34,6 +34,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.ZoomState
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import com.visuall.app.ui.LenteDaCamera
 import com.visuall.app.ui.ProporcaoDaCamera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.MediaStoreOutputOptions
@@ -145,6 +146,7 @@ class CameraFragment : Fragment() {
         cameraExecutor = Executors.newSingleThreadExecutor()
         // A escolha e da pessoa, nao da sessao: volta como estava.
         is4to3 = ProporcaoDaCamera.ehQuatroPorTres(requireContext())
+        lensFacing = LenteDaCamera.lente(requireContext())
         view.post {
             applyHudLayout()
             applyAspectRatioToPreview()
@@ -351,6 +353,14 @@ class CameraFragment : Fragment() {
         currentBinding.btnAspectRatio.text = if (is4to3) "4:3" else "16:9"
     }
 
+    // Guardada pra o modo Libras abrir na mesma lente. Ver LenteDaCamera.
+    private fun trocarLente() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+            CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+        LenteDaCamera.guardar(requireContext(), lensFacing)
+        bindCamera()
+    }
+
     private fun cameraSelectorForAvailableLens(preferredLensFacing: Int): CameraSelector {
         val provider = cameraProvider
         val preferred = CameraSelector.Builder()
@@ -432,11 +442,7 @@ class CameraFragment : Fragment() {
                         releaseCamera()
                         findNavController().navigate(R.id.action_camera_to_libras)
                     },
-                    onFlipClick = {
-                        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                            CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-                        bindCamera()
-                    },
+                    onFlipClick = { trocarLente() },
                     onAspectRatioClick = {
                         is4to3 = !is4to3
                         ProporcaoDaCamera.guardar(requireContext(), is4to3)
@@ -719,11 +725,7 @@ class CameraFragment : Fragment() {
             }
         }
 
-        binding.btnFlip.setOnClickListener {
-            lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-            bindCamera()
-        }
+        binding.btnFlip.setOnClickListener { trocarLente() }
 
         binding.btnFlash.setOnClickListener {
             flashMode = when (flashMode) {
