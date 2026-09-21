@@ -265,11 +265,22 @@ class LibrasAnalyzer(
         // classificação). A sobrancelha ainda muda de estado bem mais devagar
         // que isso.
         const val FACE_DETECT_STRIDE = 5
+
+        // Um unico frame de pose perdido nao pode partir um sinal ao meio.
+        // Durante esta janela o quadro suspeito e descartado, mas a captura
+        // anterior fica intacta; ausencia mais longa reinicia a captura sem
+        // esquecer a pessoa que ja foi adquirida pelo rosto.
+        private const val PERSON_ASSOCIATION_HOLD_MS = 350L
     }
 
     enum class Modo {
         ALFABETO,
         CORPO
+    }
+
+    private enum class FonteQuadro {
+        CAMERA,
+        OCULOS
     }
 
     private val handLandmarkerAlfabeto: HandLandmarker
@@ -286,6 +297,16 @@ class LibrasAnalyzer(
     private val letraEngine = LetraEngine(context, ::notificarFeedback)
     private val bodyEngine = BodyGestureEngine(context)
     private val faceEngine = FaceMarkerEngine(context)
+    private val personGate = PersonAssociationGate()
+    private var personSessionLocked = false
+    private var personReconfirmationPending = false
+    private var personAssociationHoldSinceMs = 0L
+    private var pendingQuestionDuringAcquisition = false
+    @Volatile private var personReconfirmationRequested = false
+    @Volatile private var temporalResetRequested = false
+    private var fonteQuadroAtiva = FonteQuadro.CAMERA
+    private var geracaoFonteOculosAtiva = -1L
+    private var geracaoConexaoOculosAtiva = -1L
 
     private var ultimaLetraNotificada = ""
     private var ultimaPorcentagemNotificada = -1
@@ -445,9 +466,21 @@ class LibrasAnalyzer(
       * camera, e de proposito -- desvincular apaga a preview e recarrega os
       * modelos ao voltar. Volatile porque quem liga e a thread da UI e quem le
       * e a thread do executor de analise.
-      */
+     */
      @Volatile
      var pausado = false
+         set(value) {
+             synchronized(this) {
+                 if (field != value) {
+                     // Nada capturado antes da interrupcao pode completar um
+                     // sinal depois dela. A frase e o lock permanecem; so os
+                     // estados temporais sao descartados no primeiro quadro.
+                     temporalResetRequested = true
+                     if (field && !value) personReconfirmationRequested = true
+                 }
+                 field = value
+             }
+         }
 
     @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
@@ -457,10 +490,13 @@ class LibrasAnalyzer(
           return
       }
       try {
-          analisarQuadro(
+          analisarQuadroDaFonte(
               imageProxy.toBitmap(),
               imageProxy.imageInfo.rotationDegrees.toFloat(),
-              espelharImagem
+              espelharImagem,
+              FonteQuadro.CAMERA,
+              null,
+              null
           )
       } finally {
           // Fora do analisarQuadro de proposito: quem abriu o ImageProxy fecha.
@@ -470,23 +506,62 @@ class LibrasAnalyzer(
     }
 
     /**
-     * Analisa UM quadro, venha de onde vier.
+     * Analisa UM quadro vindo dos oculos.
      *
      * Existe separado do [analyze] porque a camera do celular deixou de ser a
      * unica fonte: os oculos com ESP32 entregam JPEG por Wi-Fi, decodificado em
      * Bitmap pelo NetworkStreamSource. Da conversao pra ca o reconhecimento e
-     * identico, entao ele nao precisa saber quem mandou a imagem -- e nada
-     * abaixo desta linha muda por causa dos oculos.
+     * identico. A geracao identifica a conexao que esta autorizada a alimentar
+     * o analyzer: quadros atrasados de uma fonte anterior sao reciclados antes
+     * de tocar nos modelos ou consumir a reconfirmacao da pessoa.
      *
      * Toma posse do [quadro]: recicla no fim. Nao use o Bitmap depois de chamar.
      *
      * @param rotacaoGraus quanto girar pra pessoa ficar em pe. A camera do
      *   celular informa isso por quadro; os oculos tem posicao fixa na armacao.
-     * @param espelhar espelha na horizontal, pra casar com o dataset de treino
-     *   (a camera frontal precisa; uma camera que aponta pra fora, nao).
+     * @param espelhar espelha na horizontal, pra casar com o dataset de treino.
+     * @param geracaoFonte identificador entregue por [ativarFonteOculos].
+     * @param geracaoConexao identifica a conexao MJPEG que produziu o quadro.
      */
-    fun analisarQuadro(quadro: Bitmap, rotacaoGraus: Float, espelhar: Boolean) {
-      if (pausado) return
+    fun analisarQuadro(
+        quadro: Bitmap,
+        rotacaoGraus: Float,
+        espelhar: Boolean,
+        geracaoFonte: Long,
+        geracaoConexao: Long
+    ) = analisarQuadroDaFonte(
+        quadro,
+        rotacaoGraus,
+        espelhar,
+        FonteQuadro.OCULOS,
+        geracaoFonte,
+        geracaoConexao
+    )
+
+    @Synchronized
+    private fun analisarQuadroDaFonte(
+        quadro: Bitmap,
+        rotacaoGraus: Float,
+        espelhar: Boolean,
+        fonte: FonteQuadro,
+        geracaoFonte: Long?,
+        geracaoConexao: Long?
+    ) {
+      val fonteAutorizada = fonte == fonteQuadroAtiva &&
+          (fonte != FonteQuadro.OCULOS ||
+              (geracaoFonte == geracaoFonteOculosAtiva &&
+                  geracaoConexao == geracaoConexaoOculosAtiva))
+      if (!fonteAutorizada) {
+          if (!quadro.isRecycled) quadro.recycle()
+          return
+      }
+      if (pausado) {
+          // A fonte dos oculos entrega a posse deste Bitmap diretamente. Ao
+          // pausar entre a decodificacao e esta chamada, ainda precisamos
+          // liberar a memoria nativa do quadro que nao sera analisado.
+          if (!quadro.isRecycled) quadro.recycle()
+          return
+      }
       // rawBitmap/preparedBitmap precisam existir fora do try para o finally
       // poder reciclá-los (variável declarada dentro do try não é visível lá).
       val frameStartNs = SystemClock.elapsedRealtimeNanos()
@@ -509,6 +584,21 @@ class LibrasAnalyzer(
         aspectX = 0.75f * frameAspect
 
         val timestamp = nextVideoTimestamp()
+        if (temporalResetRequested) {
+            bodyEngine.resetCapture()
+            resetEstadoAlfabeto()
+            clearGate.reset()
+            faceEngine.onSubjectLost()
+            personAssociationHoldSinceMs = 0L
+            temporalResetRequested = false
+        }
+        if (personReconfirmationRequested) {
+            if (personSessionLocked) {
+                personGate.preparePoseReanchor()
+                personReconfirmationPending = true
+            }
+            personReconfirmationRequested = false
+        }
         val handStartNs = SystemClock.elapsedRealtimeNanos()
         val result = handLandmarkerAtual().detectForVideo(mpImage, timestamp)
         perfHandNs += SystemClock.elapsedRealtimeNanos() - handStartNs
@@ -517,14 +607,22 @@ class LibrasAnalyzer(
         // A pergunta por sobrancelha atende Corpo e Alfabeto. Pontos e painel
         // tecnico permanecem exclusivos do Corpo para nao poluir o Alfabeto.
         val faceStartNs = SystemClock.elapsedRealtimeNanos()
-        faceEngine.step(
+        var interrogacaoDetectada = false
+        var faceLandmarksDetectados: FloatArray? = null
+        val faceSnapshot = faceEngine.step(
             mpImage = mpImage,
             timestamp = timestamp,
-            onDetected = {
-                if (sentence.marcarInterrogativa()) onInterrogativo(true)
-            },
+            // Antes da aquisicao, duas leituras consecutivas confirmam a
+            // pessoa rapidamente. Depois do lock volta ao stride economico;
+            // nenhuma nova leitura fica no caminho critico de cada sinal.
+            forceSample = modoAtual == Modo.CORPO &&
+                (!personSessionLocked || personReconfirmationPending),
+            // No CORPO o evento so entra depois de confirmar que este rosto
+            // pertence a pose aprovada. No ALFABETO nao ha PoseLandmarker, e
+            // o comportamento facial existente continua igual.
+            onDetected = { interrogacaoDetectada = true },
             onLandmarks = { pontos ->
-                if (modoAtual == Modo.CORPO) onFaceLandmarks(pontos, frameAspect)
+                if (modoAtual == Modo.CORPO) faceLandmarksDetectados = pontos
             },
             onDiagnostic = { diagnostic ->
                 if (modoAtual == Modo.CORPO) onFaceDiagnostic(diagnostic)
@@ -554,11 +652,22 @@ class LibrasAnalyzer(
             perfPoseNs += SystemClock.elapsedRealtimeNanos() - poseStartNs
             val corpoStartNs = SystemClock.elapsedRealtimeNanos()
             try {
-                analisarCorpo(result, poseResult)
+                analisarCorpo(
+                    result,
+                    poseResult,
+                    faceSnapshot,
+                    faceLandmarksDetectados,
+                    timestamp,
+                    interrogacaoDetectada
+                )
             } finally {
                 perfCorpoNs += SystemClock.elapsedRealtimeNanos() - corpoStartNs
             }
             return
+        }
+
+        if (interrogacaoDetectada && sentence.marcarInterrogativa()) {
+            onInterrogativo(true)
         }
 
         if (result.landmarks().isEmpty()) {
@@ -670,18 +779,74 @@ class LibrasAnalyzer(
         return Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
     }
 
+    @Synchronized
     fun setEspelhamento(cameraFrontal: Boolean) {
         espelharImagem = cameraFrontal
+        fonteQuadroAtiva = FonteQuadro.CAMERA
+        geracaoFonteOculosAtiva = -1L
+        geracaoConexaoOculosAtiva = -1L
+        solicitarReconfirmacaoAposInterrupcao()
+    }
+
+    /** Autoriza somente a conexao dos oculos identificada por [geracaoFonte]. */
+    @Synchronized
+    fun ativarFonteOculos(geracaoFonte: Long) {
+        espelharImagem = false
+        fonteQuadroAtiva = FonteQuadro.OCULOS
+        geracaoFonteOculosAtiva = geracaoFonte
+        geracaoConexaoOculosAtiva = -1L
+        solicitarReconfirmacaoAposInterrupcao()
+    }
+
+    /**
+     * Abre uma epoca nova da mesma fonte. Quadros que ainda estavam na caixa
+     * da conexao anterior deixam de ser aceitos antes do reset/reanchor.
+     */
+    @Synchronized
+    fun iniciarConexaoOculos(geracaoFonte: Long, geracaoConexao: Long) {
+        if (fonteQuadroAtiva != FonteQuadro.OCULOS ||
+            geracaoFonte != geracaoFonteOculosAtiva
+        ) return
+        geracaoConexaoOculosAtiva = geracaoConexao
+        solicitarReconfirmacaoAposInterrupcao()
+    }
+
+    /** Invalida a conexao atual sem apagar a frase ou a identidade da sessao. */
+    @Synchronized
+    fun interromperFonteOculos(geracaoFonte: Long, geracaoConexao: Long) {
+        if (fonteQuadroAtiva != FonteQuadro.OCULOS ||
+            geracaoFonte != geracaoFonteOculosAtiva ||
+            geracaoConexao != geracaoConexaoOculosAtiva
+        ) return
+        geracaoConexaoOculosAtiva = -1L
+        solicitarReconfirmacaoAposInterrupcao()
+    }
+
+    private fun solicitarReconfirmacaoAposInterrupcao() {
+        temporalResetRequested = true
+        personReconfirmationRequested = true
     }
 
     // Converte as mãos detectadas em arrays crus [x0,y0,x1,y1,...] normalizados
     // no espaço do preview, para o overlay desenhar.
-    private fun handsToArrays(result: HandLandmarkerResult): List<FloatArray> =
-        result.landmarks().map { hand ->
+    private fun handsToArrays(
+        result: HandLandmarkerResult,
+        acceptedHandIndices: Set<Int>? = null
+    ): List<FloatArray> = result.landmarks().mapIndexedNotNull { index, hand ->
+        if (acceptedHandIndices != null && index !in acceptedHandIndices) {
+            null
+        } else {
             FloatArray(hand.size * 2).also { arr ->
                 hand.forEachIndexed { i, lm -> arr[i * 2] = lm.x(); arr[i * 2 + 1] = lm.y() }
             }
         }
+    }
+
+    private fun posePoints(poseResult: PoseLandmarkerResult): List<Point> =
+        poseResult.landmarks().firstOrNull().orEmpty().map { Point(it.x(), it.y()) }
+
+    private fun handPoints(handResult: HandLandmarkerResult): List<List<Point>> =
+        handResult.landmarks().map { hand -> hand.map { Point(it.x(), it.y()) } }
 
     private fun poseToArray(poseResult: PoseLandmarkerResult): FloatArray? {
         val poses = poseResult.landmarks()
@@ -811,15 +976,158 @@ class LibrasAnalyzer(
     // Perguntar "alguma mao esta aberta?" e o que o gesto quer dizer, e nao
     // depende de rotulo de lado -- que numa camera frontal espelhada nem
     // corresponde a mao anatomica.
-    private fun maoAbertaNoQuadro(handResult: HandLandmarkerResult) =
-        handResult.landmarks().firstOrNull { hand ->
-            LibrasMath.detectarDedosEsticados(hand.map { Pair(it.x() * aspectX, it.y()) })
+    private fun maoAbertaNoQuadro(
+        handResult: HandLandmarkerResult,
+        acceptedHandIndices: Set<Int>? = null
+    ) = handResult.landmarks().withIndex().firstOrNull { (index, hand) ->
+        (acceptedHandIndices == null || index in acceptedHandIndices) &&
+            LibrasMath.detectarDedosEsticados(
+                hand.map { Pair(it.x() * aspectX, it.y()) }
+            )
+    }?.value
+
+    private fun analisarCorpo(
+        handResult: HandLandmarkerResult,
+        poseResult: PoseLandmarkerResult,
+        faceSnapshot: FaceSnapshot?,
+        faceLandmarksDetectados: FloatArray?,
+        frameTimestamp: Long,
+        interrogacaoDetectada: Boolean
+    ) {
+        val agora = System.currentTimeMillis()
+        val wasLocked = personSessionLocked
+        val association = personGate.avaliar(
+            agoraMs = frameTimestamp,
+            faceSnapshot = faceSnapshot,
+            pose = posePoints(poseResult),
+            hands = handPoints(handResult)
+        )
+        personSessionLocked = association.hasLockedSubject
+        if (association.matched || !association.hasLockedSubject) {
+            personReconfirmationPending = false
+        }
+        if (wasLocked && !association.hasLockedSubject) {
+            // O proximo sinalizante precisa construir seu proprio baseline de
+            // sobrancelha; nunca herdamos a calibracao facial da pessoa anterior.
+            faceEngine.onSubjectLost()
+            pendingQuestionDuringAcquisition = false
         }
 
-    private fun analisarCorpo(handResult: HandLandmarkerResult, poseResult: PoseLandmarkerResult) {
-        onLandmarks(handsToArrays(handResult), poseToArray(poseResult), frameAspect)
-        val bodyFrame = bodyEngine.extractFrame(handResult, poseResult, aspectX)
-        val agora = System.currentTimeMillis()
+        // Fecha ANTES de extrair/normalizar o quadro. Assim pose ou mao do
+        // publico nao contaminam a janela de movimento e nao podem reaparecer
+        // como um gesto confirmado alguns quadros depois.
+        if (!association.matched) {
+            if (interrogacaoDetectada &&
+                association.decision == PersonAssociationDecision.ACQUIRING &&
+                association.matchedFaceIndex != null
+            ) {
+                // O evento facial e one-shot. Guardamos durante as duas
+                // amostras iniciais para nao perde-lo antes do lock fechar.
+                pendingQuestionDuringAcquisition = true
+            } else if (!association.hasLockedSubject &&
+                association.decision != PersonAssociationDecision.ACQUIRING
+            ) {
+                pendingQuestionDuringAcquisition = false
+            }
+            val segurandoSessao = association.hasLockedSubject
+            if (segurandoSessao && personAssociationHoldSinceMs == 0L) {
+                personAssociationHoldSinceMs = frameTimestamp
+            }
+            val holdMs = if (segurandoSessao) {
+                (frameTimestamp - personAssociationHoldSinceMs).coerceAtLeast(0L)
+            } else {
+                Long.MAX_VALUE
+            }
+            val lapsoBreve = segurandoSessao &&
+                holdMs < PERSON_ASSOCIATION_HOLD_MS
+            if (lapsoBreve) {
+                // Mantem overlay/chip estaveis pelo mesmo periodo em que a
+                // captura e preservada. Um unico frame ruim nao deve piscar a UI.
+                clearGate.reset()
+                return
+            }
+
+            onLandmarks(emptyList(), null, frameAspect)
+            onFaceLandmarks(null, frameAspect)
+            // Vencida a tolerancia, a janela temporal do gesto nao pode juntar
+            // movimentos separados. O lock da pessoa continua no personGate.
+            bodyEngine.onCorpoAusente(agora)
+            // Limpar a frase e destrutivo; ao perder o corpo alem da tolerancia
+            // nao carregamos o progresso de palma aberta pelo intervalo.
+            clearGate.reset()
+            onGestoLimpar(0f)
+            notificarLetra("-", 0f, "corpo")
+            val feedback = when (association.decision) {
+                PersonAssociationDecision.ACQUIRING ->
+                    "CONFIRMANDO ROSTO DO SINALIZANTE" to FEEDBACK_NEUTRO
+                PersonAssociationDecision.AMBIGUOUS,
+                PersonAssociationDecision.FACE_TOO_SMALL ->
+                    "APROXIME O SINALIZANTE DA CAMERA" to FEEDBACK_ALERTA
+                PersonAssociationDecision.POSE_MISMATCH -> if (segurandoSessao) {
+                    "REENQUADRE O SINALIZANTE" to FEEDBACK_ALERTA
+                } else {
+                    "ROSTO E CORPO DEVEM SER DA MESMA PESSOA" to FEEDBACK_ALERTA
+                }
+                PersonAssociationDecision.INVALID_POSE -> if (segurandoSessao) {
+                    "REENQUADRE O SINALIZANTE" to FEEDBACK_ALERTA
+                } else {
+                    "ENQUADRE ROSTO E CORPO" to FEEDBACK_ALERTA
+                }
+                PersonAssociationDecision.NO_FACE,
+                PersonAssociationDecision.STALE,
+                PersonAssociationDecision.INVALID_FACE ->
+                    "ENQUADRE ROSTO, CORPO E MAO" to FEEDBACK_ALERTA
+                PersonAssociationDecision.MATCHED ->
+                    "" to FEEDBACK_NEUTRO
+            }
+            notificarFeedback(feedback.first, feedback.second)
+            onNoHand()
+            return
+        }
+
+        if (personAssociationHoldSinceMs != 0L) {
+            val skippedMs = (frameTimestamp - personAssociationHoldSinceMs)
+                .coerceAtLeast(0L)
+            if (skippedMs < PERSON_ASSOCIATION_HOLD_MS) {
+                bodyEngine.onFramesSkipped(skippedMs)
+            } else {
+                // Se nao houve quadro intermediario exatamente no fim do hold,
+                // reiniciamos aqui antes de aceitar o corpo que reapareceu.
+                bodyEngine.onCorpoAusente(agora)
+            }
+            personAssociationHoldSinceMs = 0L
+        }
+        val acceptedHands = association.acceptedHandIndices
+        if (faceSnapshot != null) {
+            // O overlay e o evento facial so pertencem ao rosto que confirmou
+            // a sessao neste exato frame. Uma face do publico nunca e exibida
+            // nem pode acrescentar a interrogacao, mas tambem nao barra sinais.
+            onFaceLandmarks(
+                if (association.matchedFaceIndex != null) faceLandmarksDetectados else null,
+                frameAspect
+            )
+        }
+        onLandmarks(
+            handsToArrays(handResult, acceptedHands),
+            poseToArray(poseResult),
+            frameAspect
+        )
+        val perguntaConfirmada = association.matchedFaceIndex != null &&
+            (interrogacaoDetectada || pendingQuestionDuringAcquisition)
+        pendingQuestionDuringAcquisition = false
+        if (perguntaConfirmada &&
+            sentence.marcarInterrogativa()
+        ) {
+            onInterrogativo(true)
+        }
+
+        val bodyFrame = bodyEngine.extractFrame(
+            handResult,
+            poseResult,
+            aspectX,
+            acceptedHands,
+            association.handSlotAssignments
+        )
 
         if (!bodyFrame.hasPose || !bodyFrame.hasHand) {
             bodyEngine.onCorpoAusente(agora)
@@ -842,7 +1150,7 @@ class LibrasAnalyzer(
         // limpar, o resetCapture() abaixo zerava a captura, e o gesto NUNCA
         // chegava ao modelo. Relatado no aparelho exatamente assim: "AJUDAR não
         // funciona, ele fica contando os segundos pra limpar o texto".
-        val mao = maoAbertaNoQuadro(handResult)
+        val mao = maoAbertaNoQuadro(handResult, acceptedHands)
         val maoAberta = mao != null
         // Pulso (ponto 0): é o que menos se mexe quando só os dedos mudam de
         // forma, então serve de referência estável de "a mão está neste lugar".
@@ -888,16 +1196,19 @@ class LibrasAnalyzer(
     fun setModo(novoModo: Modo) {
         val modoAnterior = modoAtual
         modoAtual = novoModo
-        faceEngine.reset()
+        // O texto e o lock sobrevivem a troca, mas a volta ao Corpo exige uma
+        // unica amostra atual rosto-pose para cobrir movimento/troca de pessoa
+        // durante o intervalo em que a pose nao foi observada.
+        personReconfirmationRequested = true
+        personAssociationHoldSinceMs = 0L
         onFaceLandmarks(null, frameAspect)
         if (modoAnterior == Modo.CORPO) sentence.encerrarTrechoCorpo()
         bodyEngine.resetTudo()
         resetEstadoAlfabeto()
         if (novoModo == Modo.CORPO) sentence.iniciarTrechoCorpo()
-        // Aqui so os estados temporais de cada modelo reiniciam; a frase fica.
-        // O setModo tambem roda quando a camera religa, e ali a conversa nao
-        // pode sumir. A troca de modo pelo botao, que zera texto e
-        // interrogacao, chama limparFrase() -- ver LibrasFragment.trocarModo.
+        // A frase, a interrogacao e a identidade do sinalizante pertencem a
+        // conversa, nao ao reconhecedor. Trocar de modo reinicia apenas os
+        // estados temporais dos modelos; texto e lock permanecem.
         onRepeticaoPendente(null)
         // resetEstadoAlfabeto() (acima) já zera o cache de dedup da letra;
         // falta só o do feedback, pra troca de modo reafirmar a mensagem na
@@ -974,6 +1285,7 @@ class LibrasAnalyzer(
 
     fun getFrase(): String = sentence.frase
 
+    @Synchronized
     fun close() {
         runCatching { handLandmarkerAlfabeto.close() }
             .onFailure { android.util.Log.w("LibrasAnalyzer", "Falha ao fechar HandLandmarker alfabeto", it) }

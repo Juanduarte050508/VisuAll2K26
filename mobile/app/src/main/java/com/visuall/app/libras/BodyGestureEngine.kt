@@ -148,7 +148,9 @@ internal class BodyGestureEngine(private val context: Context) {
     fun extractFrame(
         handResult: HandLandmarkerResult,
         poseResult: PoseLandmarkerResult,
-        aspectX: Float
+        aspectX: Float,
+        acceptedHandIndices: Set<Int>? = null,
+        handSlotAssignments: Map<Int, Int>? = null
     ): Frame {
         val frame = FloatArray(LibrasAnalyzer.BODY_FEATURES)
         val poses = poseResult.landmarks()
@@ -163,6 +165,17 @@ internal class BodyGestureEngine(private val context: Context) {
         var hasLeftHand = false
         var hasRightHand = false
         handResult.landmarks().forEachIndexed { handIndex, landmarks ->
+            // O HandLandmarker detecta ate duas maos sem saber a qual corpo
+            // elas pertencem. No modo corpo, o PersonAssociationGate entrega
+            // apenas os indices ligados aos pulsos da pose aprovada; `null`
+            // preserva o comportamento antigo para chamadas sem filtro.
+            if (acceptedHandIndices != null && handIndex !in acceptedHandIndices) {
+                return@forEachIndexed
+            }
+            val assignedSlot = handSlotAssignments?.get(handIndex)
+            if (handSlotAssignments != null && assignedSlot == null) {
+                return@forEachIndexed
+            }
             val handedness = handResult.handedness().getOrNull(handIndex)
                 ?.firstOrNull()?.categoryName().orEmpty()
             // ATENCAO: o rotulo vem INVERTIDO em relacao ao pipeline de treino.
@@ -185,7 +198,10 @@ internal class BodyGestureEngine(private val context: Context) {
             //
             // O desempate por avgX abaixo NAO se inverte: e coordenada, e as
             // coordenadas ja concordam entre os dois lados.
-            val offset = if (handedness.equals("Right", ignoreCase = true)) {
+            val offset = if (assignedSlot != null) {
+                if (assignedSlot == 0) LibrasAnalyzer.BODY_POSE_POINTS
+                else LibrasAnalyzer.BODY_POSE_POINTS + LibrasAnalyzer.BODY_HAND_POINTS
+            } else if (handedness.equals("Right", ignoreCase = true)) {
                 LibrasAnalyzer.BODY_POSE_POINTS
             } else if (handedness.equals("Left", ignoreCase = true)) {
                 LibrasAnalyzer.BODY_POSE_POINTS + LibrasAnalyzer.BODY_HAND_POINTS
@@ -203,6 +219,19 @@ internal class BodyGestureEngine(private val context: Context) {
             } else {
                 hasRightHand = true
             }
+        }
+
+        // Se existem maos no detector mas nenhuma pertence aos pulsos da pose,
+        // elas sao de outra pessoa: nao ressuscitamos as maos antigas do
+        // sinalizante pelo cache de tolerancia a falhas do MediaPipe.
+        if (handSlotAssignments != null && handResult.landmarks().isNotEmpty() &&
+            handSlotAssignments.isEmpty()
+        ) {
+            ultimaMao[0] = null
+            ultimaMao[1] = null
+            quadrosSemMao[0] = 0
+            quadrosSemMao[1] = 0
+            return Frame(frame, false, hasPose, false, false)
         }
 
         val slotA = preencheMaoPerdida(frame, 0, LibrasAnalyzer.BODY_POSE_POINTS, hasLeftHand)
@@ -427,6 +456,16 @@ internal class BodyGestureEngine(private val context: Context) {
         if (agora - bodyNoHandSince > 1_500L) {
             ultimaClasseCorpo = ""
         }
+    }
+
+    /**
+     * Mantem uma captura durante um lapso curtissimo do rastreador sem deixar
+     * esse intervalo consumir o limite de duracao do gesto. Os quadros ausentes
+     * nao entram no buffer; apenas pausamos o relogio da captura.
+     */
+    fun onFramesSkipped(durationMs: Long) {
+        if (durationMs <= 0L || bodyState != BodyState.CAPTURANDO) return
+        capturaComecouEm += durationMs
     }
 
     // Limpa os sinais reconhecidos (frase de corpo) sem mexer na máquina de

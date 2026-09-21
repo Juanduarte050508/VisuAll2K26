@@ -26,22 +26,36 @@ internal class FaceMarkerEngine(private val context: Context) {
     private var faceModelIndisponivel = false
     private val detector = BrowGestureDetector(mode = BrowRaiseMode.BOTH)
     private var faceFrameCounter = 0
+    private var lastFaceSampleTimestamp: Long? = null
 
     /**
-     * Chamado uma vez por frame do modo corpo. A inferencia facial e reduzida
+     * Chamado uma vez por frame nos dois modos. A inferencia facial e reduzida
      * por [LibrasAnalyzer.FACE_DETECT_STRIDE], mas a maquina temporal usa o
      * timestamp real em milissegundos, nao uma contagem de frames.
+     *
+     * Devolve um [FaceSnapshot] somente quando este frame foi realmente
+     * amostrado. `null` significa "stride pulou o frame", e nao "sem rosto";
+     * [forceSample] permite adquirir o sinalizante logo ao entrar no modo
+     * Corpo. Depois do lock, a cadencia reduzida volta a priorizar os gestos.
      */
     @Synchronized
     fun step(
         mpImage: MPImage,
         timestamp: Long,
+        forceSample: Boolean = false,
         onDetected: () -> Unit,
         onLandmarks: (pontos: FloatArray?) -> Unit,
         onDiagnostic: (BrowDetection) -> Unit
-    ) {
+    ): FaceSnapshot? {
         faceFrameCounter++
-        if (faceFrameCounter % LibrasAnalyzer.FACE_DETECT_STRIDE != 0) return
+        val lastSample = lastFaceSampleTimestamp
+        val acquisitionDue = forceSample && (lastSample == null ||
+            timestamp < lastSample ||
+            timestamp - lastSample >= ACQUISITION_FACE_INTERVAL_MS)
+        val regularDue = !forceSample &&
+            faceFrameCounter % LibrasAnalyzer.FACE_DETECT_STRIDE == 0
+        if (!acquisitionDue && !regularDue) return null
+        lastFaceSampleTimestamp = timestamp
 
         val faceResult = ensureLoaded()?.detectForVideo(mpImage, timestamp)
         onLandmarks(extractOverlayPoints(faceResult))
@@ -51,12 +65,21 @@ internal class FaceMarkerEngine(private val context: Context) {
         // O gesto e um EVENTO: depois de confirmado, a interrogacao pertence
         // a frase e nao some quando a pessoa abaixa a sobrancelha.
         if (detection.triggered) onDetected()
+        return extractFaceSnapshot(faceResult, timestamp)
     }
 
     @Synchronized
     fun reset() {
         detector.reset()
         faceFrameCounter = 0
+        lastFaceSampleTimestamp = null
+    }
+
+    /** Reinicia apenas o baseline facial quando a sessao troca de pessoa. */
+    @Synchronized
+    fun onSubjectLost() {
+        detector.reset()
+        lastFaceSampleTimestamp = null
     }
 
     private fun faceOptions(delegate: Delegate) = FaceLandmarkerOptions.builder()
@@ -67,9 +90,9 @@ internal class FaceMarkerEngine(private val context: Context) {
                 .build()
         )
         .setRunningMode(RunningMode.VIDEO)
-        // Dois permite detectar e rejeitar explicitamente mais de uma pessoa.
-        // A suavizacao interna do MediaPipe so existe com um rosto, mas esta
-        // classe ja aplica filtro temporal proprio, independente do FPS.
+        // Dois permite enxergar o sinalizante e um rosto ao fundo: o filtro de
+        // pessoa escolhe o dominante ou rejeita a ambiguidade. A sobrancelha
+        // continua exigindo um unico rosto, e tem suavizacao temporal propria.
         .setNumFaces(2)
         .setMinFaceDetectionConfidence(MIN_FACE_CONFIDENCE)
         .setMinFacePresenceConfidence(MIN_FACE_CONFIDENCE)
@@ -174,10 +197,10 @@ internal class FaceMarkerEngine(private val context: Context) {
      * olhos. Isso remove inclinacao 2D da cabeca e normaliza por escala facial.
      */
     private fun normalizedBrowGeometry(
-        browA: Point,
-        browB: Point,
-        eyeA: Point,
-        eyeB: Point
+        browA: BrowPoint,
+        browB: BrowPoint,
+        eyeA: BrowPoint,
+        eyeB: BrowPoint
     ): BrowGeometry? {
         var dx = eyeB.x - eyeA.x
         var dy = eyeB.y - eyeA.y
@@ -194,7 +217,7 @@ internal class FaceMarkerEngine(private val context: Context) {
         val downX = -axisY
         val downY = axisX
 
-        fun gap(eye: Point, brow: Point): Float {
+        fun gap(eye: BrowPoint, brow: BrowPoint): Float {
             val eyeToBrowX = eye.x - brow.x
             val eyeToBrowY = eye.y - brow.y
             return (eyeToBrowX * downX + eyeToBrowY * downY) / scale
@@ -216,7 +239,7 @@ internal class FaceMarkerEngine(private val context: Context) {
         val face = result?.faceLandmarks()?.singleOrNull() ?: return null
         if (OVERLAY_LANDMARKS.any { it !in face.indices }) return null
 
-        val points = ArrayList<Point>(OVERLAY_POINT_COUNT)
+        val points = ArrayList<BrowPoint>(OVERLAY_POINT_COUNT)
         BROW_A.forEach { points += face[it].toPoint() }
         BROW_B.forEach { points += face[it].toPoint() }
         addEyeOverlay(points, face, EYE_A_CORNERS)
@@ -232,8 +255,74 @@ internal class FaceMarkerEngine(private val context: Context) {
         }
     }
 
+    /**
+     * Observacao facial completa, no mesmo espaco normalizado de pose/maos.
+     * Um rosto bruto malformado nao pode desaparecer silenciosamente da lista:
+     * o gate precisa dessa evidencia para falhar fechado em vez de promover um
+     * segundo rosto valido do fundo.
+     */
+    private fun extractFaceSnapshot(
+        result: FaceLandmarkerResult?,
+        timestamp: Long
+    ): FaceSnapshot {
+        val candidates = mutableListOf<FaceCandidate>()
+        var invalidFaceDetected = false
+
+        result?.faceLandmarks().orEmpty().forEach { face ->
+            val candidate = faceCandidate(face)
+            if (candidate == null) {
+                invalidFaceDetected = true
+            } else {
+                candidates += candidate
+            }
+        }
+
+        return FaceSnapshot(
+            timestampMs = timestamp,
+            faces = candidates,
+            invalidFaceDetected = invalidFaceDetected
+        )
+    }
+
+    private fun faceCandidate(face: List<NormalizedLandmark>): FaceCandidate? {
+        val bounds = faceBounds(face) ?: return null
+        val nose = face.getOrNull(NOSE_LANDMARK_INDEX) ?: return null
+        val noseX = nose.x()
+        val noseY = nose.y()
+        if (!noseX.isFinite() || !noseY.isFinite()) return null
+
+        return FaceCandidate(
+            bounds = bounds,
+            nose = Point(noseX, noseY)
+        )
+    }
+
+    private fun faceBounds(face: List<NormalizedLandmark>): Rect? {
+        if (face.isEmpty()) return null
+        var minX = Float.POSITIVE_INFINITY
+        var minY = Float.POSITIVE_INFINITY
+        var maxX = Float.NEGATIVE_INFINITY
+        var maxY = Float.NEGATIVE_INFINITY
+        face.forEach { landmark ->
+            val x = landmark.x()
+            val y = landmark.y()
+            if (!x.isFinite() || !y.isFinite()) return null
+            minX = minOf(minX, x)
+            minY = minOf(minY, y)
+            maxX = maxOf(maxX, x)
+            maxY = maxOf(maxY, y)
+        }
+        val bounds = Rect(
+            left = minX.coerceIn(0f, 1f),
+            top = minY.coerceIn(0f, 1f),
+            right = maxX.coerceIn(0f, 1f),
+            bottom = maxY.coerceIn(0f, 1f)
+        )
+        return bounds.takeIf { it.width > 0f && it.height > 0f }
+    }
+
     private fun addEyeOverlay(
-        destination: MutableList<Point>,
+        destination: MutableList<BrowPoint>,
         face: List<NormalizedLandmark>,
         corners: IntArray
     ) {
@@ -244,22 +333,23 @@ internal class FaceMarkerEngine(private val context: Context) {
         destination += second
     }
 
-    private fun center(face: List<NormalizedLandmark>, indices: IntArray): Point {
+    private fun center(face: List<NormalizedLandmark>, indices: IntArray): BrowPoint {
         var x = 0f
         var y = 0f
         indices.forEach { index ->
             x += face[index].x()
             y += face[index].y()
         }
-        return Point(x / indices.size, y / indices.size)
+        return BrowPoint(x / indices.size, y / indices.size)
     }
 
-    private fun midpoint(a: NormalizedLandmark, b: NormalizedLandmark): Point =
+    private fun midpoint(a: NormalizedLandmark, b: NormalizedLandmark): BrowPoint =
         midpoint(a.toPoint(), b.toPoint())
 
-    private fun midpoint(a: Point, b: Point): Point = Point((a.x + b.x) / 2f, (a.y + b.y) / 2f)
+    private fun midpoint(a: BrowPoint, b: BrowPoint): BrowPoint =
+        BrowPoint((a.x + b.x) / 2f, (a.y + b.y) / 2f)
 
-    private fun NormalizedLandmark.toPoint() = Point(x(), y())
+    private fun NormalizedLandmark.toPoint() = BrowPoint(x(), y())
 
     private fun Map<String, Category>.score(name: String): Float = this[name]?.score() ?: 0f
 
@@ -270,12 +360,14 @@ internal class FaceMarkerEngine(private val context: Context) {
         faceLandmarker = null
     }
 
-    private data class Point(val x: Float, val y: Float)
+    private data class BrowPoint(val x: Float, val y: Float)
     private data class BrowGeometry(val gapA: Float, val gapB: Float, val rollDegrees: Float)
 
     private companion object {
         const val FACE_MODEL_ASSET = "face_landmarker.task"
         const val MIN_FACE_CONFIDENCE = 0.5f
+        const val ACQUISITION_FACE_INTERVAL_MS = 120L
+        const val NOSE_LANDMARK_INDEX = 1
 
         val BROW_A = intArrayOf(70, 105, 107)
         val BROW_B = intArrayOf(300, 334, 336)

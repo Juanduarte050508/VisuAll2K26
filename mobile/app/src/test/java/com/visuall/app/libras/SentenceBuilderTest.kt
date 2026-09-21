@@ -232,6 +232,57 @@ class SentenceBuilderTest {
     }
 
     @Test
+    fun `voltar ao alfabeto preserva trecho que veio do corpo`() {
+        val s = SentenceBuilder()
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        s.encerrarTrechoCorpo()
+
+        // Corpo entrega uma palavra/frase pronta. A troca cria a fronteira do
+        // proximo token para a primeira letra nao grudar em "pessoa".
+        s.aceitarLetra("O")
+        s.aceitarLetra("I")
+        assertEquals("A pessoa OI", s.frase)
+    }
+
+    @Test
+    fun `passagem vazia pelo corpo nao quebra palavra do alfabeto`() {
+        val s = builder("O", "I")
+        s.iniciarTrechoCorpo()
+        s.encerrarTrechoCorpo()
+
+        s.aceitarLetra("A")
+        assertEquals("OIA", s.frase)
+    }
+
+    @Test
+    fun `passagem corporal vazia nao perde separador pendente de trecho anterior`() {
+        val s = SentenceBuilder()
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        s.encerrarTrechoCorpo()
+
+        // Alternar de volta ao Corpo sem reconhecer nada nao deve consumir a
+        // fronteira que ainda separa o trecho corporal da proxima letra.
+        s.iniciarTrechoCorpo()
+        s.encerrarTrechoCorpo()
+        s.aceitarLetra("O")
+
+        assertEquals("A pessoa O", s.frase)
+    }
+
+    @Test
+    fun `apagar logo apos sair do corpo nao encontra espaco invisivel`() {
+        val s = SentenceBuilder()
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("A pessoa")
+        s.encerrarTrechoCorpo()
+
+        assertTrue(s.apagarUltima())
+        assertEquals("A pesso", s.frase)
+    }
+
+    @Test
     fun `limpar durante trecho corporal nao restaura prefixo antigo`() {
         val s = builder("O", "I")
         s.iniciarTrechoCorpo()

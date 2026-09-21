@@ -25,6 +25,8 @@ internal class SentenceBuilder {
     // recalculada a cada novo sinal, por isso substituimos somente o trecho da
     // sessao atual e nunca o que veio do alfabeto ou de uma sessao anterior.
     private var prefixoTrechoCorpo: String? = null
+    private var trechoCorpoTemTexto = false
+    private var separarProximaLetra = false
 
     // Letra reconhecida que seria uma repetição da última e por isso está
     // esperando confirmação explícita (botão REPETIR). "" = nada pendente.
@@ -48,6 +50,10 @@ internal class SentenceBuilder {
      * qualquer outra fica pendente esperando o usuário confirmar.
      */
     fun aceitarLetra(letra: String): Resultado {
+        if (separarProximaLetra && frase.isNotBlank() && !frase.endsWith(" ")) {
+            frase += " "
+        }
+        separarProximaLetra = false
         val repetindo = frase.lastOrNull()?.toString() == letra
         if (repetindo && !podeRepetirAutomaticamente(letra)) {
             letraRepetidaPendente = letra
@@ -76,6 +82,7 @@ internal class SentenceBuilder {
 
     fun adicionarEspaco() {
         frase += " "
+        separarProximaLetra = false
         letraRepetidaPendente = ""
     }
 
@@ -95,6 +102,9 @@ internal class SentenceBuilder {
 
     fun iniciarTrechoCorpo() {
         prefixoTrechoCorpo = frase.trimEnd()
+        trechoCorpoTemTexto = false
+        // Se um trecho corporal anterior ainda aguardava a primeira letra do
+        // Alfabeto, uma passagem vazia pelo Corpo nao consome essa fronteira.
         letraRepetidaPendente = ""
     }
 
@@ -103,6 +113,7 @@ internal class SentenceBuilder {
             prefixoTrechoCorpo = it
         }
         val trecho = traducao.trim()
+        trechoCorpoTemTexto = trecho.isNotBlank()
         frase = when {
             prefixo.isBlank() -> trecho
             trecho.isBlank() -> prefixo
@@ -113,11 +124,18 @@ internal class SentenceBuilder {
 
     fun encerrarTrechoCorpo() {
         prefixoTrechoCorpo = null
+        // O modo corpo entrega palavras inteiras; se ele realmente produziu
+        // texto, a proxima letra do Alfabeto precisa iniciar outro token. O
+        // separador fica pendente ate a letra chegar: assim trocar de modo nao
+        // cria um espaco invisivel que exigiria dois toques para apagar.
+        separarProximaLetra = separarProximaLetra || trechoCorpoTemTexto
+        trechoCorpoTemTexto = false
     }
 
     /** Apaga o último caractere. Devolve false se a frase já estava vazia. */
     fun apagarUltima(): Boolean {
         if (frase.isEmpty()) return false
+        separarProximaLetra = false
         frase = frase.dropLast(1)
         if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = frase.trimEnd()
         letraRepetidaPendente = ""
@@ -128,6 +146,8 @@ internal class SentenceBuilder {
         frase = ""
         interrogativa = false
         if (prefixoTrechoCorpo != null) prefixoTrechoCorpo = ""
+        trechoCorpoTemTexto = false
+        separarProximaLetra = false
         letraRepetidaPendente = ""
     }
 
@@ -146,6 +166,7 @@ internal class SentenceBuilder {
      */
     fun definir(nova: String) {
         frase = nova
+        separarProximaLetra = false
         letraRepetidaPendente = ""
     }
 }

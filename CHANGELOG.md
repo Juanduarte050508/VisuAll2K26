@@ -19,14 +19,35 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
   tela do Alfabeto. Nenhum limiar facial ou de mao foi alterado. Status:
   **implementado, aguardando validacao no aparelho**.
 
-- **Trocar Corpo/Alfabeto comeca uma frase nova** — decisao revista a pedido do
-  dono do projeto: tocar no outro modo zera texto e interrogacao, tanto com a
-  camera do celular quanto com a dos oculos. A limpeza fica no toque do botao
-  (`LibrasFragment.trocarModo`), e nao no `setModo`, porque o `setModo` tambem
-  roda quando a camera religa (trocar de lente, sair dos oculos) e ali a
-  conversa nao pode sumir. Tocar no modo ja ativo nao apaga nada. Substitui a
-  entrada anterior, que mantinha a frase entre os modos. Status:
-  **implementado, aguardando validacao no aparelho**.
+- **Mesclar Corpo/Alfabeto sem apagar a conversa** — texto e interrogacao
+  voltam a pertencer a uma unica frase. A troca reinicia apenas os estados
+  temporais dos reconhecedores; o trecho corporal e recalculado sem substituir
+  o que veio do Alfabeto, e voltar ao Alfabeto preserva os sinais ja traduzidos.
+  Se o Corpo produziu texto, a primeira letra seguinte recebe um separador para
+  nao formar algo como `A pessoaOI`; uma passagem vazia nao quebra a palavra.
+  Vale para camera do celular e oculos, pois os dois usam o mesmo analyzer.
+  Status: **implementado, aguardando validacao no aparelho**.
+
+- **Filtro de pessoa no modo Corpo** — duas leituras consecutivas associam
+  geometricamente FaceMesh (incluindo nariz), cabeca e ombros e travam o
+  sinalizante ao entrar. Enquanto adquire, o rosto pode ser amostrado a cada
+  120 ms; depois do lock volta ao `FACE_DETECT_STRIDE=5` e nenhuma nova leitura
+  facial bloqueia um sinal. Rosto ausente, ocluido, invalido ou do publico apenas
+  deixa de autorizar o `?` e o overlay facial naquele quadro. A identidade
+  permanece entre Corpo/Alfabeto, com uma unica reconfirmacao rosto-pose ao
+  voltar de modo/pausa ou trocar a fonte da camera, e so e liberada apos 2 s
+  de ausencia ou salto persistente da pose; um lapso menor que 350 ms nem zera
+  a captura ou pisca o overlay. Trocas celular/oculos sao serializadas por
+  geracao, e uma queda do stream limpa a captura parcial e pede essa mesma
+  reconfirmacao unica na volta. A continuidade corporal aceita variacao de
+  escala ate razao 0,45 e deslocamento de no maximo
+  `min(22% do quadro, max(10%, 75% dos ombros))`. Na aquisicao, rostos menores
+  que 7% x 8% do quadro sao ignorados, o match precisa ser unico e ter ao menos
+  75% da area do maior rosto elegivel; o intervalo entre as duas amostras
+  pode chegar a 1 s. Cada mao precisa casar 1:1 com um pulso da pose; esse slot
+  segue ate o modelo, sem ser decidido outra vez por `handedness`. Todo filtro
+  roda antes dos buffers de gesto. Status: **implementado, limiares
+  aguardando validacao no aparelho**.
 
 - **Interrogacao visivel com a frase vazia** — `PhraseOutput.exibicao` passa a
   mostrar `?` sozinho na caixa de texto. No Corpo a sobrancelha costuma vir antes

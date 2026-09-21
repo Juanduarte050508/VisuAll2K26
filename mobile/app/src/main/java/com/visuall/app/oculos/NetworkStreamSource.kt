@@ -34,11 +34,19 @@ internal class NetworkStreamSource(
      */
     ssidOculos: String? = null,
     senhaOculos: String? = null,
-    /** Chamado na thread de analise, um quadro por vez. Recebe a posse do Bitmap. */
-    private val aoQuadro: (Bitmap) -> Unit,
-    private val aoEstado: (MjpegClient.Estado) -> Unit = {}
+    /**
+     * Chamado na thread de analise, um quadro por vez. Recebe a posse do
+     * Bitmap e a geracao da conexao MJPEG que produziu aquele quadro.
+     */
+    private val aoQuadro: (Bitmap, Long) -> Unit,
+    private val aoEstado: (MjpegClient.Estado, Long) -> Unit = { _, _ -> }
 ) {
-    private val caixa = UltimoQuadro<ByteArray>()
+    private data class QuadroDaConexao(
+        val jpeg: ByteArray,
+        val geracaoConexao: Long
+    )
+
+    private val caixa = UltimoQuadro<QuadroDaConexao>()
 
     // O stream sai POR ESTA rede, nao pela que o sistema achar melhor. Ver
     // RedeDosOculos: o Wi-Fi da placa nao tem internet, e o padrao do Android
@@ -66,7 +74,8 @@ internal class NetworkStreamSource(
 
         threadAnalise = Thread({
             while (true) {
-                val jpeg = caixa.consumir() ?: break
+                val quadro = caixa.consumir() ?: break
+                val jpeg = quadro.jpeg
                 // decodeByteArray devolve null em vez de lancar quando os bytes
                 // nao formam uma imagem. Acontece de verdade com Wi-Fi ruim:
                 // pular o quadro e certo, mas contar quantos foram e o que
@@ -77,7 +86,7 @@ internal class NetworkStreamSource(
                     continue
                 }
                 try {
-                    aoQuadro(bitmap)
+                    aoQuadro(bitmap, quadro.geracaoConexao)
                 } catch (erro: Throwable) {
                     // Um quadro que quebra o reconhecimento nao pode derrubar o
                     // stream inteiro: o proximo pode estar bom.
@@ -87,8 +96,14 @@ internal class NetworkStreamSource(
         }, "oculos-analise").apply { start() }
 
         threadRede = Thread({
-            cliente.rodar(aoEstado = aoEstado) { jpeg ->
-                if (caixa.publicar(jpeg)) descartados++
+            var geracaoConexao = 0L
+            cliente.rodar(aoEstado = { estado ->
+                if (estado is MjpegClient.Estado.Conectando) geracaoConexao++
+                aoEstado(estado, geracaoConexao)
+            }) { jpeg ->
+                if (caixa.publicar(QuadroDaConexao(jpeg, geracaoConexao))) {
+                    descartados++
+                }
             }
         }, "oculos-rede").apply { start() }
     }

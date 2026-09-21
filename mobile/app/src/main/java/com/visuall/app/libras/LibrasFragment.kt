@@ -120,7 +120,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     // Camera dos oculos (ESP32 por Wi-Fi). Quando ligada, o CameraX e
     // desvinculado e os quadros passam a vir da rede -- ver ligarOculos().
     private var fonteOculos: NetworkStreamSource? = null
-    private var usandoOculos = false
+    @Volatile private var usandoOculos = false
+    @Volatile private var geracaoFonteOculos = 0L
+    @Volatile private var geracaoConexaoOculosAtiva = -1L
 
     /** Ultima falha ja avisada, pra o laco de reconexao nao repetir o aviso. */
     private var ultimoAvisoOculos: String? = null
@@ -968,28 +970,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * Troca entre ALFABETO e CORPO pelo botao, e a troca comeca uma frase nova:
-     * texto e interrogacao zeram.
+     * Troca entre ALFABETO e CORPO preservando texto e interrogacao.
      *
-     * A limpeza fica aqui, no toque, e nao no setModo do analyzer: o setModo
-     * tambem roda toda vez que a camera religa (trocar de lente, sair dos
-     * oculos), e ali apagar a conversa seria perder texto sem ninguem pedir.
-     * Tocar no modo que ja esta ativo nao apaga nada.
+     * Os dois reconhecedores alimentam a mesma conversa. O analyzer reinicia
+     * apenas os estados temporais de cada modelo e abre/encerra o trecho
+     * corporal sem descartar o que ja foi transcrito.
      */
     private fun trocarModo(novo: LibrasAnalyzer.Modo) {
-        val mudou = novo != modoAtual
         modoAtual = novo
         librasAnalyzer?.setModo(modoAtual)
-        if (mudou) {
-            val analyzer = librasAnalyzer
-            if (analyzer != null) {
-                analyzer.limparFrase()
-            } else {
-                // Camera ainda abrindo: sem analyzer, a tela zera do mesmo jeito.
-                onInterrogativoAtualizado(false)
-                onFraseAtualizada("")
-            }
-        }
         updateModeButtons()
     }
 
@@ -1583,6 +1572,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         }
 
         usandoOculos = true
+        val geracaoFonte = ++geracaoFonteOculos
+        geracaoConexaoOculosAtiva = -1L
         // Solta a camera do celular: sem isto ela continua ligada gastando
         // bateria e entregando quadros que ninguem quer.
         cameraProvider?.unbindAll()
@@ -1619,8 +1610,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         binding.landmarkOverlay.clear()
 
         // Camera que aponta pra FORA, como a traseira do celular: nao espelha.
-        // A frontal espelha pra casar com o dataset, que foi gravado em selfie.
-        analyzer.setEspelhamento(false)
+        // A geracao impede que um ultimo quadro do CameraX ou de uma conexao
+        // antiga consuma o reset/reanchor reservado ao primeiro quadro novo.
+        analyzer.ativarFonteOculos(geracaoFonte)
 
         fonteOculos?.parar()
         // Apontando pra placa, o app pede pro Android entrar na rede dela --
@@ -1632,7 +1624,13 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             url = endereco,
             ssidOculos = if (naPlaca) EnderecoDosOculos.REDE else null,
             senhaOculos = if (naPlaca) EnderecoDosOculos.SENHA else null,
-            aoQuadro = { quadro ->
+            aoQuadro = receberQuadro@{ quadro, geracaoConexao ->
+                if (!usandoOculos || geracaoFonte != geracaoFonteOculos ||
+                    geracaoConexao != geracaoConexaoOculosAtiva
+                ) {
+                    quadro.recycle()
+                    return@receberQuadro
+                }
                 // A camera fica deitada na haste da armacao, entao o quadro
                 // chega tombado. Girar AQUI, uma vez so, deixa a tela, o
                 // reconhecimento e o desenho dos landmarks vendo a mesma
@@ -1648,7 +1646,10 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 if (!telaBloqueada) {
                     val paraTela = emPe.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
                     view?.post {
-                        if (usandoOculos && _binding != null && !telaBloqueada) {
+                        if (usandoOculos && geracaoFonte == geracaoFonteOculos &&
+                            geracaoConexao == geracaoConexaoOculosAtiva &&
+                            _binding != null && !telaBloqueada
+                        ) {
                             binding.ivOculos.setImageBitmap(paraTela)
                         } else {
                             paraTela.recycle()
@@ -1658,9 +1659,46 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
                 // rotacao 0: o quadro ja veio girado da linha de cima. A camera
                 // fica fixa na armacao, ao contrario da do celular, que informa
                 // a rotacao a cada quadro.
-                librasAnalyzer?.analisarQuadro(emPe, 0f, false) ?: emPe.recycle()
+                librasAnalyzer?.analisarQuadro(
+                    emPe,
+                    0f,
+                    false,
+                    geracaoFonte,
+                    geracaoConexao
+                ) ?: emPe.recycle()
             },
-            aoEstado = { estado -> view?.post { mostrarEstadoOculos(estado) } }
+            aoEstado = estadoOculos@{ estado, geracaoConexao ->
+                if (!usandoOculos || geracaoFonte != geracaoFonteOculos) {
+                    return@estadoOculos
+                }
+                when (estado) {
+                    is MjpegClient.Estado.Conectando -> {
+                        geracaoConexaoOculosAtiva = geracaoConexao
+                        librasAnalyzer?.iniciarConexaoOculos(
+                            geracaoFonte,
+                            geracaoConexao
+                        )
+                    }
+                    is MjpegClient.Estado.Erro -> {
+                        if (geracaoConexao == geracaoConexaoOculosAtiva) {
+                            geracaoConexaoOculosAtiva = -1L
+                        }
+                        // A queda nao apaga conversa ou lock. Invalida quadros
+                        // enfileirados, limpa a captura parcial e deixa a nova
+                        // conexao pedir uma associacao rosto-pose na volta.
+                        librasAnalyzer?.interromperFonteOculos(
+                            geracaoFonte,
+                            geracaoConexao
+                        )
+                    }
+                    is MjpegClient.Estado.Recebendo -> Unit
+                }
+                view?.post {
+                    if (usandoOculos && geracaoFonte == geracaoFonteOculos) {
+                        mostrarEstadoOculos(estado)
+                    }
+                }
+            }
         ).also { it.iniciar() }
     }
 
@@ -1814,6 +1852,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private fun desligarOculos() {
         usandoOculos = false
+        geracaoFonteOculos++
+        geracaoConexaoOculosAtiva = -1L
         ultimoAvisoOculos = null
         desbloquearTela()
         manterTelaAcesa(false)
@@ -1859,6 +1899,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         manterTelaAcesa(false)
         // Antes de tudo: as threads dos oculos seguram uma referencia ao
         // analyzer, e ele e fechado logo abaixo.
+        usandoOculos = false
+        geracaoFonteOculos++
+        geracaoConexaoOculosAtiva = -1L
         fonteOculos?.parar()
         fonteOculos = null
         landscapeHud = null
