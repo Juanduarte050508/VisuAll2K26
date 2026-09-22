@@ -29,7 +29,7 @@ internal class FaceMarkerEngine(private val context: Context) {
     private var lastFaceSampleTimestamp: Long? = null
 
     /**
-     * Chamado uma vez por frame nos dois modos. A inferencia facial e reduzida
+     * Chamado uma vez por frame do modo Corpo. A inferencia facial e reduzida
      * por [LibrasAnalyzer.FACE_DETECT_STRIDE], mas a maquina temporal usa o
      * timestamp real em milissegundos, nao uma contagem de frames.
      *

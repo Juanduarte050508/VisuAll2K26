@@ -14,6 +14,30 @@ import org.tensorflow.lite.flex.FlexDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/**
+ * Converte o lado do pulso da Pose para o slot que o modelo corporal aprendeu.
+ *
+ * O modelo foi treinado com MediaPipe Solutions em videos sem espelhamento;
+ * o app usa MediaPipe Tasks sobre o quadro espelhado. Neste pipeline os lados
+ * ficam opostos — a mesma incompatibilidade que ja obrigava `Right -> slot 0`
+ * no handedness do Tasks. Manter a conversao aqui evita que o filtro de pessoa
+ * reintroduza os slots trocados ao associar cada mao ao pulso da pose.
+ */
+internal fun bodyModelHandSlot(
+    assignedPoseWristSlot: Int?,
+    tasksHandedness: String,
+    averageX: Double
+): Int = when (assignedPoseWristSlot) {
+    0 -> 1
+    1 -> 0
+    else -> when {
+        tasksHandedness.equals("Right", ignoreCase = true) -> 0
+        tasksHandedness.equals("Left", ignoreCase = true) -> 1
+        averageX < 0.5 -> 0
+        else -> 1
+    }
+}
+
 // Reconhecimento de sinais de corpo (pose + mãos + modelo TFLite) — extraído
 // do LibrasAnalyzer pra isolar a máquina de estado de captura/classificação
 // e a tradução de frase do resto do pipeline (letra, marcador de rosto). O
@@ -196,20 +220,18 @@ internal class BodyGestureEngine(private val context: Context) {
             // COMPUTADOR nao sai, e sai CONVERSAR".
             // Ver computer/treino/diagnostico/testa_troca_maos.py.
             //
-            // O desempate por avgX abaixo NAO se inverte: e coordenada, e as
-            // coordenadas ja concordam entre os dois lados.
-            val offset = if (assignedSlot != null) {
-                if (assignedSlot == 0) LibrasAnalyzer.BODY_POSE_POINTS
-                else LibrasAnalyzer.BODY_POSE_POINTS + LibrasAnalyzer.BODY_HAND_POINTS
-            } else if (handedness.equals("Right", ignoreCase = true)) {
-                LibrasAnalyzer.BODY_POSE_POINTS
-            } else if (handedness.equals("Left", ignoreCase = true)) {
-                LibrasAnalyzer.BODY_POSE_POINTS + LibrasAnalyzer.BODY_HAND_POINTS
-            } else {
-                val avgX = landmarks.map { it.x() }.average()
-                if (avgX < 0.5) LibrasAnalyzer.BODY_POSE_POINTS
-                else LibrasAnalyzer.BODY_POSE_POINTS + LibrasAnalyzer.BODY_HAND_POINTS
-            }
+            // O gate informa o pulso da Pose (0=left, 1=right), nao o slot do
+            // modelo. Esses referenciais sao opostos neste pipeline espelhado;
+            // escrever o numero cru aqui foi a regressao que transformou
+            // COMPUTADOR em CONVERSAR. Sem gate, preservamos exatamente a
+            // inversao de handedness ja validada no aparelho.
+            val modelSlot = bodyModelHandSlot(
+                assignedPoseWristSlot = assignedSlot,
+                tasksHandedness = handedness,
+                averageX = landmarks.map { it.x() }.average()
+            )
+            val offset = LibrasAnalyzer.BODY_POSE_POINTS +
+                modelSlot * LibrasAnalyzer.BODY_HAND_POINTS
             landmarks.take(LibrasAnalyzer.BODY_HAND_POINTS).forEachIndexed { index, lm ->
                 writeBodyPoint(frame, offset + index, lm.x() * aspectX, lm.y(), lm.z())
             }

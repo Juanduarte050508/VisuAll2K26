@@ -13,11 +13,36 @@ Formato: **Constante(s)** — valor atual — decisão e por quê — status.
 
 ## Não lançado
 
-- **Interrogacao tambem no Alfabeto** — o `FaceMarkerEngine` agora roda a cada
-  cinco frames nos dois modos. O evento e o `?` atendem Corpo e Alfabeto; pontos
-  vermelhos e painel tecnico continuam exclusivos do Corpo para nao poluir a
-  tela do Alfabeto. Nenhum limiar facial ou de mao foi alterado. Status:
-  **implementado, aguardando validacao no aparelho**.
+- **Alfabeto lento, trocando letras e com falsos positivos** — o app executava
+  ate cinco modelos binarios estaticos (A/D/S/T/U), ou tres dinamicos (H/J/K),
+  antes do modelo geral em todo quadro. Alem do custo de varias inferencias
+  ONNX, um binario superconfiante podia sobrescrever a comparacao correta do
+  modelo multiclasse. O modelo geral agora decide primeiro; os individuais so
+  recuperam um quadro que o geral rejeitou. No caminho comum isso reduz seis
+  inferencias para uma. O FaceLandmarker tambem saiu do caminho do Alfabeto e
+  permanece no Corpo, onde faz o lock rosto-pose solicitado. Isso preserva FPS
+  da mao e evita que quadros descartados parecam movimento dinamico H/J/K.
+  Testes garantem que um especialista nao troca uma decisao geral e que ainda
+  pode recuperar uma rejeicao. Status: **corrigido, aguardando validacao no
+  aparelho**.
+
+- **COMPUTADOR voltava a sair como CONVERSAR apos o filtro de pessoa** — o
+  gate novo associava corretamente cada mao ao pulso da pose, mas usava
+  `0=left/1=right` diretamente como slot do modelo. O treino foi extraido com
+  MediaPipe Solutions sem espelho e o app usa Tasks no quadro espelhado; essa
+  conversao precisa ser invertida, como o handedness do app ja era. A regressao
+  reproduz exatamente o diagnostico existente: com slots trocados, COMPUTADOR
+  cai de 32/32 para 0/32 e 29 clipes viram CONVERSAR. O gate continua filtrando
+  maos do publico e fazendo o pareamento 1:1, mas agora converte pulso da pose
+  para o referencial aprendido pelo modelo. Coberto por teste unitario dos dois
+  lados e dos fallbacks. Status: **corrigido, aguardando validacao no aparelho**.
+
+- **Interrogacao no Alfabeto revertida em favor da fluidez** — a primeira
+  implementacao fazia o `FaceMarkerEngine` rodar a cada cinco frames nos dois
+  modos. Como o filtro rosto-corpo e necessario somente no Corpo e o Alfabeto
+  depende de alta cadencia da mao, a inferencia facial ficou exclusiva do
+  Corpo. Texto e interrogacao ja existentes continuam preservados ao alternar
+  modos. Nenhum limiar facial ou de mao foi alterado. Status: **ajustado**.
 
 - **Mesclar Corpo/Alfabeto sem apagar a conversa** — texto e interrogacao
   voltam a pertencer a uma unica frase. A troca reinicia apenas os estados

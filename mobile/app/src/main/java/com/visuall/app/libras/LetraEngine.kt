@@ -321,30 +321,38 @@ internal class LetraEngine(
         return if (espelhado.letra != "-") espelhado else direto
     }
 
-    private fun classificarEstatico(dados: FloatArray): Prediction =
-        comFallbackEspelhado(dados, ::classificarEstaticoOrientado)
-
-    private fun classificarEstaticoOrientado(dados: FloatArray): Prediction {
-        if (modelosEstaticosIndividuais.isNotEmpty()) {
-            val individual = classificarIndividual(
-                entrada = dados,
-                modelos = modelosEstaticosIndividuais,
-                features = LibrasAnalyzer.FEATURES_ESTATICO,
-                confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
-                margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
-                modo = "estatico_individual"
-            )
-            if (individual.letra != "-") return individual
+    private fun classificarEstatico(dados: FloatArray): Prediction {
+        // O modelo geral conhece todas as letras e, portanto, consegue
+        // comparar a vencedora com rivais reais. Ele precisa decidir primeiro.
+        // Os modelos individuais sao binarios e superconfiantes: quando eram
+        // executados antes, um falso positivo de A/D/S/T/U sobrescrevia uma
+        // resposta correta do geral e ainda custava ate cinco inferencias por
+        // quadro. Eles agora sao apenas recuperacao para quando o geral diz
+        // explicitamente "nao sei".
+        val geral = comFallbackEspelhado(dados, ::classificarEstaticoGeral)
+        return LetterPredictionPolicy.generalFirst(geral) {
+            if (modelosEstaticosIndividuais.isEmpty()) return@generalFirst null
+            comFallbackEspelhado(dados) { entrada ->
+                classificarIndividual(
+                    entrada = entrada,
+                    modelos = modelosEstaticosIndividuais,
+                    features = LibrasAnalyzer.FEATURES_ESTATICO,
+                    confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
+                    margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
+                    modo = "estatico_individual"
+                )
+            }
         }
+    }
 
-        return LetterDecision.deProbabilidades(
+    private fun classificarEstaticoGeral(dados: FloatArray): Prediction =
+        LetterDecision.deProbabilidades(
             probs = rodarModelo(sessionEstatico, dados, LibrasAnalyzer.FEATURES_ESTATICO),
             labels = labelsEstatico,
             confiancaMinima = LibrasAnalyzer.CONFIANCA_MINIMA,
             margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
             modo = "estatico"
         )
-    }
 
     // Roda uma sessão ONNX e devolve o vetor de probabilidades. O índice [1] da
     // saída é a lista de probabilidades porque o treino exporta com
@@ -368,39 +376,48 @@ internal class LetraEngine(
         janela.forEachIndexed { i, frame ->
             frame.copyInto(entrada, i * LibrasAnalyzer.FEATURES_ESTATICO)
         }
-        // mirrorLandmarks nega as posições pares, que na sequência concatenada
-        // continuam sendo exatamente os x de cada quadro — espelhar os 420
-        // valores de uma vez espelha a sequência inteira.
-        val direto = DynamicLetterMotion.filtrar(
-            classificarDinamicoOrientado(entrada),
+        val geral = classificarDinamicoComFallback(
+            entrada,
             janelaCrua
+        ) { orientada ->
+            classificarDinamicoComModelo(
+                entrada = orientada,
+                session = sessionDinamico,
+                labels = labelsDinamico,
+                modo = "dinamico"
+            )
+        }
+        return LetterPredictionPolicy.generalFirst(geral) {
+            if (modelosDinamicosIndividuais.isEmpty()) return@generalFirst null
+            classificarDinamicoComFallback(entrada, janelaCrua) { orientada ->
+                classificarIndividual(
+                    entrada = orientada,
+                    modelos = modelosDinamicosIndividuais,
+                    features = LibrasAnalyzer.FEATURES_DINAMICO,
+                    confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
+                    margemMinima = LibrasAnalyzer.MARGEM_DINAMICA_MINIMA,
+                    modo = "dinamico_individual"
+                )
+            }
+        }
+    }
+
+    private fun classificarDinamicoComFallback(
+        entrada: FloatArray,
+        janelaCrua: List<FloatArray>,
+        classificar: (FloatArray) -> Prediction
+    ): Prediction {
+        val direto = DynamicLetterMotion.filtrar(
+            classificar(entrada), janelaCrua
         )
         if (direto.letra != "-") return direto
 
+        // mirrorLandmarks nega as posicoes pares, que na sequencia concatenada
+        // continuam sendo exatamente os x de cada quadro: espelhar os 420
+        // valores de uma vez espelha a sequencia inteira.
         return DynamicLetterMotion.filtrar(
-            classificarDinamicoOrientado(LibrasMath.mirrorLandmarks(entrada)),
+            classificar(LibrasMath.mirrorLandmarks(entrada)),
             janelaCrua
-        )
-    }
-
-    private fun classificarDinamicoOrientado(entrada: FloatArray): Prediction {
-        if (modelosDinamicosIndividuais.isNotEmpty()) {
-            val individual = classificarIndividual(
-                entrada = entrada,
-                modelos = modelosDinamicosIndividuais,
-                features = LibrasAnalyzer.FEATURES_DINAMICO,
-                confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
-                margemMinima = LibrasAnalyzer.MARGEM_DINAMICA_MINIMA,
-                modo = "dinamico_individual"
-            )
-            if (individual.letra != "-") return individual
-        }
-
-        return classificarDinamicoComModelo(
-            entrada = entrada,
-            session = sessionDinamico,
-            labels = labelsDinamico,
-            modo = "dinamico"
         )
     }
 

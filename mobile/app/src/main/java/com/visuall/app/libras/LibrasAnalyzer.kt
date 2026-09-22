@@ -604,30 +604,28 @@ class LibrasAnalyzer(
         perfHandNs += SystemClock.elapsedRealtimeNanos() - handStartNs
         handCount = result.landmarks().size
 
-        // A pergunta por sobrancelha atende Corpo e Alfabeto. Pontos e painel
-        // tecnico permanecem exclusivos do Corpo para nao poluir o Alfabeto.
+        // O rosto pertence ao filtro de pessoa do modo Corpo. Executar o
+        // FaceLandmarker no Alfabeto disputa a mesma thread com a mao, derruba
+        // quadros e transforma pequenos ajustes em falso movimento dinamico.
+        // No Alfabeto priorizamos a fluidez e analisamos somente a mao.
         val faceStartNs = SystemClock.elapsedRealtimeNanos()
         var interrogacaoDetectada = false
         var faceLandmarksDetectados: FloatArray? = null
-        val faceSnapshot = faceEngine.step(
-            mpImage = mpImage,
-            timestamp = timestamp,
-            // Antes da aquisicao, duas leituras consecutivas confirmam a
-            // pessoa rapidamente. Depois do lock volta ao stride economico;
-            // nenhuma nova leitura fica no caminho critico de cada sinal.
-            forceSample = modoAtual == Modo.CORPO &&
-                (!personSessionLocked || personReconfirmationPending),
-            // No CORPO o evento so entra depois de confirmar que este rosto
-            // pertence a pose aprovada. No ALFABETO nao ha PoseLandmarker, e
-            // o comportamento facial existente continua igual.
-            onDetected = { interrogacaoDetectada = true },
-            onLandmarks = { pontos ->
-                if (modoAtual == Modo.CORPO) faceLandmarksDetectados = pontos
-            },
-            onDiagnostic = { diagnostic ->
-                if (modoAtual == Modo.CORPO) onFaceDiagnostic(diagnostic)
-            }
-        )
+        val faceSnapshot = if (modoAtual == Modo.CORPO) {
+            faceEngine.step(
+                mpImage = mpImage,
+                timestamp = timestamp,
+                // Antes da aquisicao, duas leituras consecutivas confirmam a
+                // pessoa rapidamente. Depois do lock volta ao stride economico;
+                // nenhuma nova leitura fica no caminho critico de cada sinal.
+                forceSample = !personSessionLocked || personReconfirmationPending,
+                onDetected = { interrogacaoDetectada = true },
+                onLandmarks = { pontos -> faceLandmarksDetectados = pontos },
+                onDiagnostic = onFaceDiagnostic
+            )
+        } else {
+            null
+        }
         perfFaceNs += SystemClock.elapsedRealtimeNanos() - faceStartNs
 
         if (modoAtual == Modo.CORPO) {
@@ -664,10 +662,6 @@ class LibrasAnalyzer(
                 perfCorpoNs += SystemClock.elapsedRealtimeNanos() - corpoStartNs
             }
             return
-        }
-
-        if (interrogacaoDetectada && sentence.marcarInterrogativa()) {
-            onInterrogativo(true)
         }
 
         if (result.landmarks().isEmpty()) {
