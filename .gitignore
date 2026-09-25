@@ -41,3 +41,6 @@ computer/treino/diagnostico/__pycache__/
 computer/treino/diagnostico/*.npz
 computer/treino/diagnostico/*.npz.numpy2
 computer/models/legacy/
+
+# Configuracoes locais do Claude Code
+.claude/

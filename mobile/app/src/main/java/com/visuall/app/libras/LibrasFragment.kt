@@ -146,7 +146,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     private var fraseBase = ""
     private var interrogativoAtivo = false
     private var ultimaLetraChip = ""
-    private var linhasAtivas = true
+    // Linhas comecam desligadas; quem quiser ver o esqueleto liga no LINHAS.
+    private var linhasAtivas = false
     private var modoAtual = LibrasAnalyzer.Modo.ALFABETO
 
     // Hold da lixeira: animador da barra de progresso e a trava que impede o
@@ -877,6 +878,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             Toast.makeText(requireContext(), "Modo corpo ativo", Toast.LENGTH_SHORT).show()
         }
 
+        binding.landmarkOverlay.isVisible = linhasAtivas
         binding.btnLines.setOnClickListener {
             linhasAtivas = !linhasAtivas
             binding.landmarkOverlay.isVisible = linhasAtivas
@@ -1745,7 +1747,8 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         if (!telaBloqueada) return
         telaBloqueada = false
         _binding?.oculosLock?.isVisible = false
-        _binding?.landmarkOverlay?.visibility = View.VISIBLE
+        // Volta ao que o botao LINHAS diz, e nao sempre visivel.
+        _binding?.landmarkOverlay?.isVisible = linhasAtivas
         ignorarVoltarBloqueado.isEnabled = false
         ajustarBrilho(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
     }
