@@ -815,8 +815,7 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
 
         binding.btnReply.setOnClickListener {
             if (binding.replyPanel.isVisible) {
-                saveReplyToScreen()
-                closeReplyPanel()
+                salvarRespostaEFechar()
             } else {
                 openReplyPanel(focus = true)
             }
@@ -845,11 +844,9 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             hideKeyboard()
         }
 
-        // Sair da tela cheia e uma acao separada, no X do canto.
-        binding.btnReplyExit.setOnClickListener {
-            saveReplyToScreen()
-            closeReplyPanel()
-        }
+        // O X tambem confirma o conteudo antes de sair. Centralizar esse fluxo
+        // evita que outro atalho feche o painel sem registrar a resposta.
+        binding.btnReplyExit.setOnClickListener { salvarRespostaEFechar() }
 
         binding.btnReplyErase.setOnClickListener {
             esvaziarResposta()
@@ -1215,6 +1212,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             applyPreviewAspectRatio()
             applyHudLayout()
         }
+    }
+
+    /** Confirma o texto atual como RESPOSTA e so entao fecha o painel. */
+    private fun salvarRespostaEFechar() {
+        saveReplyToScreen()
+        closeReplyPanel()
     }
 
     /**
