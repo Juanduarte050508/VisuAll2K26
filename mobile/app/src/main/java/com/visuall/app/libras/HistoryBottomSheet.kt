@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -177,7 +179,8 @@ class HistoryBottomSheet : BottomSheetDialogFragment() {
             appendLine("VisuAll - $titulo")
             appendLine()
             items.forEach { item ->
-                appendLine("[${item.formattedTime()}] ${item.word}")
+                val autor = if (item.source == "RESPOSTA") "Resposta" else "Libras"
+                appendLine("[${item.formattedTime()}] $autor: ${item.word}")
             }
         }.trim()
     }
@@ -196,6 +199,9 @@ private fun HistorySheetContent(
     val textPrimary = colorResource(R.color.text_primary)
     val textMuted = colorResource(R.color.text_muted)
     val empty = entries.isEmpty()
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (entries.lastIndex).coerceAtLeast(0)
+    )
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -259,15 +265,18 @@ private fun HistorySheetContent(
                 )
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 440.dp)
                         .padding(horizontal = 22.dp)
                 ) {
-                    items(
-                        items = entries.asReversed(),
-                        key = { entry -> "${entry.timestamp}:${entry.source}:${entry.word}" }
-                    ) { entry ->
+                    itemsIndexed(
+                        items = entries,
+                        // O indice evita colisao quando duas mensagens iguais
+                        // sao registradas no mesmo milissegundo.
+                        key = { index, entry -> "$index:${entry.timestamp}:${entry.source}" }
+                    ) { _, entry ->
                         HistoryRow(entry)
                     }
                 }
@@ -311,34 +320,54 @@ private fun HistorySheetContent(
 @Composable
 private fun HistoryRow(entry: HistoryEntry) {
     val textPrimary = colorResource(R.color.text_primary)
+    val textOnGold = colorResource(R.color.text_on_gold)
     val textMuted = colorResource(R.color.text_muted)
-    val bubbleShape = RoundedCornerShape(14.dp)
     val response = entry.source == "RESPOSTA"
-    val bubbleColor = if (response) Color(0xE6111111) else Color(0xE0111111)
-    val borderColor = if (response) Color(0x66E8A020) else Color(0x22FFFFFF)
+    val gold = colorResource(R.color.gold_primary)
+    val bubbleShape = if (response) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    } else {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    }
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 7.dp)
+            .padding(vertical = 7.dp),
+        horizontalArrangement = if (response) Arrangement.End else Arrangement.Start
     ) {
-        Text(
-            text = entry.formattedTime(),
-            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
-            color = textMuted,
-            fontSize = 11.sp
-        )
-        Text(
-            text = entry.word,
-            modifier = Modifier
-                .clip(bubbleShape)
-                .background(bubbleColor)
-                .border(1.dp, borderColor, bubbleShape)
-                .padding(horizontal = 16.dp, vertical = 11.dp),
-            color = textPrimary,
-            fontSize = 16.sp,
-            lineHeight = 20.sp
-        )
+        Column(
+            modifier = Modifier.widthIn(max = 320.dp),
+            horizontalAlignment = if (response) Alignment.End else Alignment.Start
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (response) "Resposta" else "Libras",
+                    color = if (response) gold else textMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.size(6.dp))
+                Text(text = entry.formattedTime(), color = textMuted, fontSize = 11.sp)
+            }
+            Text(
+                text = entry.word,
+                modifier = Modifier
+                    .clip(bubbleShape)
+                    .background(if (response) gold else Color(0xE6242424))
+                    .then(
+                        if (response) Modifier
+                        else Modifier.border(1.dp, Color(0x33FFFFFF), bubbleShape)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 11.dp),
+                color = if (response) textOnGold else textPrimary,
+                fontSize = 16.sp,
+                lineHeight = 20.sp
+            )
+        }
     }
 }
 

@@ -957,16 +957,11 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
             true
         }
 
-        // Duas metades da conversa, dois historicos. O botao do topo abre o
-        // que foi SINALIZADO; o de dentro da tela de resposta abre o que foi
-        // RESPONDIDO. Antes uma lista so misturava os dois e obrigava a
-        // garimpar pra achar o que se procurava.
-        binding.btnHistory.setOnClickListener {
-            abrirHistorico("LIBRAS", "Libras")
-        }
-        binding.btnReplyHistory.setOnClickListener {
-            abrirHistorico("RESPOSTA", "Respostas")
-        }
+        // Os dois atalhos mostram a mesma conversa. Libras e respostas ficam
+        // juntas, na ordem em que aconteceram, inclusive quando a resposta foi
+        // confirmada pelo botao PRONTO.
+        binding.btnHistory.setOnClickListener { abrirHistorico() }
+        binding.btnReplyHistory.setOnClickListener { abrirHistorico() }
     }
 
     /**
@@ -1004,12 +999,12 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
         scheduleBindCamera(180L)
     }
 
-    private fun abrirHistorico(origem: String, titulo: String) {
-        HistoryBottomSheet.newInstance(historyStore.entriesDe(origem), titulo)
+    private fun abrirHistorico() {
+        HistoryBottomSheet.newInstance(historyStore.entries, "Conversa")
             .also { sheet ->
-                sheet.onClearConversation = { historyStore.limpar(origem) }
+                sheet.onClearConversation = { historyStore.limpar() }
             }
-            .show(childFragmentManager, "history_$origem")
+            .show(childFragmentManager, "history")
     }
 
     /**
