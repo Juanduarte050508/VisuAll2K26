@@ -41,6 +41,13 @@ internal class LetraEngine(
     private val modelosEstaticosIndividuais = carregarModelosIndividuais(
         context, labelsEstatico, "letras_estaticas"
     )
+    private val reforcosEstaticosRestritos: Set<String> = runCatching {
+        context.assets.open("letras_estaticas/reforcos_restritos.txt")
+            .bufferedReader().readLines()
+            .map { it.trim().uppercase() }
+            .filter { it.isNotBlank() }
+            .toSet()
+    }.getOrDefault(emptySet())
     private val modelosDinamicosIndividuais = carregarModelosIndividuais(
         context, labelsDinamico, "letras_dinamicas"
     )
@@ -325,10 +332,16 @@ internal class LetraEngine(
         comFallbackEspelhado(dados, ::classificarEstaticoOrientado)
 
     private fun classificarEstaticoOrientado(dados: FloatArray): Prediction {
-        if (modelosEstaticosIndividuais.isNotEmpty()) {
+        // Modelos individuais antigos continuam com a precedência original.
+        // Reforços esparsos (listados em reforcos_restritos.txt) entram apenas
+        // depois do geral, para nunca ocultarem uma letra fora do seu grupo.
+        val individuaisPrioritarios = modelosEstaticosIndividuais.filterNot {
+            it.label in reforcosEstaticosRestritos
+        }
+        if (individuaisPrioritarios.isNotEmpty()) {
             val individual = classificarIndividual(
                 entrada = dados,
-                modelos = modelosEstaticosIndividuais,
+                modelos = individuaisPrioritarios,
                 features = LibrasAnalyzer.FEATURES_ESTATICO,
                 confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
                 margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
@@ -337,12 +350,31 @@ internal class LetraEngine(
             if (individual.letra != "-") return individual
         }
 
-        return LetterDecision.deProbabilidades(
+        val geral = LetterDecision.deProbabilidades(
             probs = rodarModelo(sessionEstatico, dados, LibrasAnalyzer.FEATURES_ESTATICO),
             labels = labelsEstatico,
             confiancaMinima = LibrasAnalyzer.CONFIANCA_MINIMA,
             margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
             modo = "estatico"
+        )
+
+        val modelosRestritos = modelosEstaticosIndividuais.filter {
+            it.label in reforcosEstaticosRestritos
+        }
+        if (modelosRestritos.isEmpty()) return geral
+
+        val reforco = classificarIndividual(
+            entrada = dados,
+            modelos = modelosRestritos,
+            features = LibrasAnalyzer.FEATURES_ESTATICO,
+            confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
+            margemMinima = LibrasAnalyzer.MARGEM_ESTATICA_MINIMA,
+            modo = "estatico_individual_restrito"
+        )
+        return LetterDecision.combinarComReforcoRestrito(
+            base = geral,
+            reforco = reforco,
+            labelsDoReforco = reforcosEstaticosRestritos
         )
     }
 

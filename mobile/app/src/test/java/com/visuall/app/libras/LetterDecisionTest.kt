@@ -17,6 +17,42 @@ class LetterDecisionTest {
 
     private val labels = listOf("A", "B", "C")
 
+    @Test
+    fun `reforco restrito nao sobrescreve letra de fora do grupo`() {
+        val base = Prediction("A", 0.96f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("A", resultado.letra)
+    }
+
+    @Test
+    fun `reforco restrito pode desempatar dentro do proprio grupo`() {
+        val base = Prediction("U", 0.91f, "estatico")
+        val reforco = Prediction("V", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("V", resultado.letra)
+    }
+
+    @Test
+    fun `reforco restrito atua quando geral nao sabe`() {
+        val base = Prediction("-", 0.60f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("U", resultado.letra)
+    }
+
     private fun estatico(probs: FloatArray) = LetterDecision.deProbabilidades(
         probs = probs,
         labels = labels,

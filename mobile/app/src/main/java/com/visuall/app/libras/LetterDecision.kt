@@ -14,6 +14,19 @@ package com.visuall.app.libras
 // que deixa a decisão testável em JVM. Ver LetterDecisionTest.
 internal object LetterDecision {
 
+    // Um reforço treinado com poucas classes não conhece todo o alfabeto.
+    // Portanto ele só pode desempatar letras do seu próprio grupo ou atuar
+    // quando o modelo geral não soube responder. Isso impede, por exemplo,
+    // que um reforço U/V transforme A, B, C... em U ou V.
+    fun combinarComReforcoRestrito(
+        base: Prediction,
+        reforco: Prediction,
+        labelsDoReforco: Set<String>
+    ): Prediction {
+        if (base.letra != "-" && base.letra !in labelsDoReforco) return base
+        return if (reforco.letra != "-") reforco else base
+    }
+
     // Decisão sobre um modelo MULTICLASSE (softmax sobre todas as letras): o
     // vencedor precisa de confiança absoluta E de distância do segundo lugar.
     //
