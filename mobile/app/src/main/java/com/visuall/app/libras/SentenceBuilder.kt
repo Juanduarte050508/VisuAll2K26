@@ -112,6 +112,13 @@ internal class SentenceBuilder {
     }
 
     fun encerrarTrechoCorpo() {
+        val prefixo = prefixoTrechoCorpo
+        val corpoAdicionouTexto = prefixo != null && frase.trimEnd() != prefixo
+        if (corpoAdicionouTexto && frase.isNotBlank() && !frase.endsWith(" ")) {
+            // Fecha a palavra/sentenca corporal antes de voltar ao alfabeto.
+            // Sem este separador, PESSOA seguido da letra A virava "pessoaA".
+            frase += " "
+        }
         prefixoTrechoCorpo = null
     }
 

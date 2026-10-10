@@ -165,7 +165,6 @@ class BrowGestureDetectorTest {
         // Mesmas operacoes da troca de modo, sem depender da camera Android.
         detector.reset()
         sentence.encerrarTrechoCorpo()
-        sentence.adicionarEspaco()
         sentence.aceitarLetra("A")
         sentence.iniciarTrechoCorpo()
         sentence.definirTrechoCorpo("AJUDAR")

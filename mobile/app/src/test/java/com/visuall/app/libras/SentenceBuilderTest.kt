@@ -232,6 +232,27 @@ class SentenceBuilderTest {
     }
 
     @Test
+    fun `sair do corpo separa a proxima letra do alfabeto`() {
+        val s = SentenceBuilder()
+        s.iniciarTrechoCorpo()
+        s.definirTrechoCorpo("pessoa")
+        s.encerrarTrechoCorpo()
+        s.aceitarLetra("A")
+
+        assertEquals("pessoa A", s.frase)
+    }
+
+    @Test
+    fun `sair do corpo sem reconhecer sinal nao cria espaco`() {
+        val s = builder("O", "I")
+        s.iniciarTrechoCorpo()
+        s.encerrarTrechoCorpo()
+        s.aceitarLetra("A")
+
+        assertEquals("OIA", s.frase)
+    }
+
+    @Test
     fun `limpar durante trecho corporal nao restaura prefixo antigo`() {
         val s = builder("O", "I")
         s.iniciarTrechoCorpo()
