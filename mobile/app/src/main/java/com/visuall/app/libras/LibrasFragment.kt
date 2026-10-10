@@ -962,28 +962,15 @@ class LibrasFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * Troca entre ALFABETO e CORPO pelo botao, e a troca comeca uma frase nova:
-     * texto e interrogacao zeram.
+     * Troca entre ALFABETO e CORPO preservando a frase compartilhada.
      *
-     * A limpeza fica aqui, no toque, e nao no setModo do analyzer: o setModo
-     * tambem roda toda vez que a camera religa (trocar de lente, sair dos
-     * oculos), e ali apagar a conversa seria perder texto sem ninguem pedir.
-     * Tocar no modo que ja esta ativo nao apaga nada.
+     * O analyzer encerra o trecho corporal anterior e inicia outro quando
+     * necessario, portanto tanto as letras quanto os sinais de corpo continuam
+     * no mesmo texto. Limpar a frase e uma acao explicita do usuario.
      */
     private fun trocarModo(novo: LibrasAnalyzer.Modo) {
-        val mudou = novo != modoAtual
         modoAtual = novo
         librasAnalyzer?.setModo(modoAtual)
-        if (mudou) {
-            val analyzer = librasAnalyzer
-            if (analyzer != null) {
-                analyzer.limparFrase()
-            } else {
-                // Camera ainda abrindo: sem analyzer, a tela zera do mesmo jeito.
-                onInterrogativoAtualizado(false)
-                onFraseAtualizada("")
-            }
-        }
         updateModeButtons()
     }
 

@@ -198,8 +198,7 @@
             android:layout_gravity="start|center_vertical"
             android:layout_marginStart="13dp"
             android:contentDescription="Texto reconhecido em Libras"
-            android:src="@drawable/ic_hands"
-            app:tint="#E8A020" />
+            android:src="@drawable/visuall_hand_logo" />
 
         <TextView
             android:id="@+id/tv_phrase"
@@ -279,10 +278,8 @@
             app:layout_constraintBottom_toBottomOf="@id/btn_reply_exit" />
 
         <!--
-            Historico das RESPOSTAS, so delas. O botao do modo de leitura abre o
-            historico do que foi sinalizado; este abre o do que foi respondido.
-            Sao consultados em momentos diferentes, entao cada um vive na tela
-            onde faz sentido.
+            O mesmo historico completo disponivel no modo de leitura. O atalho
+            fica nas duas telas para estar sempre ao alcance.
         -->
         <ImageView
             android:id="@+id/btn_reply_history"
@@ -290,7 +287,7 @@
             android:layout_height="44dp"
             android:layout_marginEnd="12dp"
             android:background="@drawable/vf_bg_action_btn"
-            android:contentDescription="Historico das respostas"
+            android:contentDescription="Historico da conversa"
             android:padding="13dp"
             android:src="@drawable/ic_history"
             app:tint="@color/text_primary"

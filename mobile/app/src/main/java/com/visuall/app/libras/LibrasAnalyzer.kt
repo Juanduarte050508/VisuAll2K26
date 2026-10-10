@@ -895,9 +895,8 @@ class LibrasAnalyzer(
         resetEstadoAlfabeto()
         if (novoModo == Modo.CORPO) sentence.iniciarTrechoCorpo()
         // Aqui so os estados temporais de cada modelo reiniciam; a frase fica.
-        // O setModo tambem roda quando a camera religa, e ali a conversa nao
-        // pode sumir. A troca de modo pelo botao, que zera texto e
-        // interrogacao, chama limparFrase() -- ver LibrasFragment.trocarModo.
+        // O setModo tambem roda quando a camera religa e quando o usuario troca
+        // entre alfabeto e corpo. Nos dois casos a conversa deve continuar.
         onRepeticaoPendente(null)
         // resetEstadoAlfabeto() (acima) já zera o cache de dedup da letra;
         // falta só o do feedback, pra troca de modo reafirmar a mensagem na
