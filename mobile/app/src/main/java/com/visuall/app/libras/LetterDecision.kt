@@ -14,6 +14,13 @@ package com.visuall.app.libras
 // que deixa a decisão testável em JVM. Ver LetterDecisionTest.
 internal object LetterDecision {
 
+    // A ausência de resposta pode vir de fontes diferentes (modelo geral,
+    // reforço ou modelo de corpo). Internamente usamos "-", mas nunca
+    // deixamos uma representação textual de "não sei" chegar à interface ou
+    // ao construtor da frase.
+    fun normalizarSaida(letra: String): String =
+        if (letra.isBlank() || letra == "-" || letra.equals("NADA", ignoreCase = true)) "-" else letra
+
     // Um reforço treinado com poucas classes não conhece todo o alfabeto.
     // Portanto ele só pode desempatar letras do seu próprio grupo ou atuar
     // quando o modelo geral não soube responder. Isso impede, por exemplo,
@@ -21,9 +28,28 @@ internal object LetterDecision {
     fun combinarComReforcoRestrito(
         base: Prediction,
         reforco: Prediction,
-        labelsDoReforco: Set<String>
+        labelsDoReforco: Set<String>,
+        labelsPermitidosSemBase: Set<String> = emptySet(),
+        labelsQueExigemConcordancia: Set<String> = emptySet(),
+        exigirReforcoParaGrupo: Boolean = false
     ): Prediction {
+        if (base.letra == "-") {
+            return if (reforco.letra in labelsPermitidosSemBase) reforco else base
+        }
         if (base.letra != "-" && base.letra !in labelsDoReforco) return base
+
+        // Uma classe que produz falso positivo não pode ser sustentada por um
+        // único modelo nem roubar outra classe do mesmo grupo. Para ela sair,
+        // geral e reforço precisam apontar exatamente para o mesmo rótulo.
+        if (base.letra in labelsQueExigemConcordancia) {
+            return if (reforco.letra == base.letra) reforco else base.copy(letra = "-")
+        }
+        if (reforco.letra in labelsQueExigemConcordancia && reforco.letra != base.letra) {
+            return base
+        }
+        if (exigirReforcoParaGrupo) {
+            return if (reforco.letra != "-") reforco else base.copy(letra = "-")
+        }
         return if (reforco.letra != "-") reforco else base
     }
 
@@ -84,7 +110,8 @@ internal object LetterDecision {
         confiancaMinima: Float,
         margemMinima: Float,
         confiancaSemRival: Float,
-        modo: String
+        modo: String,
+        confiancaPorLabel: Map<String, Float> = emptyMap()
     ): Prediction {
         if (pontuacoes.isEmpty()) return Prediction("-", 0f, modo, 0f)
 
@@ -105,8 +132,9 @@ internal object LetterDecision {
             // Sem ninguém pra comparar, a margem é fictícia: reportamos 0 pra
             // não fingir uma folga que não foi medida.
             val (label, valor) = pontuacoes[0]
+            val limiar = confiancaPorLabel[label] ?: confiancaSemRival
             return Prediction(
-                if (valor >= confiancaSemRival) label else "-",
+                if (valor >= limiar) label else "-",
                 valor,
                 modo,
                 0f
@@ -114,7 +142,8 @@ internal object LetterDecision {
         }
 
         val margem = melhor - segundo
-        val letra = if (melhor >= confiancaMinima && margem >= margemMinima) melhorLabel else "-"
+        val limiar = confiancaPorLabel[melhorLabel] ?: confiancaMinima
+        val letra = if (melhor >= limiar && margem >= margemMinima) melhorLabel else "-"
         return Prediction(letra, melhor, modo, margem)
     }
 

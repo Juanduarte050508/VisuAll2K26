@@ -100,6 +100,14 @@ class LibrasAnalyzer(
         // aprendeu a rejeitar o que não é nenhuma das classes que conhece.
         // Por isso a barra aqui é mais alta que a do modelo geral.
         const val CONFIANCA_INDIVIDUAL   = 0.97f
+        // Medidos nas 600 janelas reais de H/K/X. H/K chegam a 0.97 com boa
+        // frequência (136/199 e 240/319 janelas), então continuam exigentes.
+        // X, porém, fica entre 0.686 e 0.842 e era cortado quase inteiro em
+        // 0.80, quebrando a estabilidade temporal. Os modelos concorrentes
+        // ficam abaixo de 0.38 nas amostras de X/H/K, permitindo o corte
+        // específico sem afrouxar H e K.
+        const val CONFIANCA_REFORCO_DINAMICO_HK = 0.97f
+        const val CONFIANCA_REFORCO_DINAMICO_X  = 0.70f
         // Usado quando existe UM ÚNICO modelo individual treinado. Nesse caso
         // não há segundo colocado, então a margem vira igual à confiança e o
         // portão de margem não filtra nada — qualquer resposta acima de
@@ -297,11 +305,12 @@ class LibrasAnalyzer(
     // pela confiança crua — o float varia um pouco a cada frame só por
     // jitter do landmark, então comparar o float não deduplicaria quase nada.
     private fun notificarLetra(letra: String, confianca: Float, modo: String) {
-        val porcentagem = if (letra != "-") (confianca * 100).toInt().coerceIn(0, 100) else -1
-        if (letra == ultimaLetraNotificada && porcentagem == ultimaPorcentagemNotificada) return
-        ultimaLetraNotificada = letra
+        val letraNormalizada = LetterDecision.normalizarSaida(letra)
+        val porcentagem = if (letraNormalizada != "-") (confianca * 100).toInt().coerceIn(0, 100) else -1
+        if (letraNormalizada == ultimaLetraNotificada && porcentagem == ultimaPorcentagemNotificada) return
+        ultimaLetraNotificada = letraNormalizada
         ultimaPorcentagemNotificada = porcentagem
-        onLetra(letra, confianca, modo)
+        onLetra(letraNormalizada, confianca, modo)
     }
 
     private fun notificarFeedback(mensagem: String, nivel: Int) {
@@ -606,7 +615,10 @@ class LibrasAnalyzer(
             val letraStartNs = SystemClock.elapsedRealtimeNanos()
             val predicao = letraEngine.process(pontos)
             perfLetraNs += SystemClock.elapsedRealtimeNanos() - letraStartNs
-            val letra = predicao.letra
+            // "Não sei" é silêncio: não chega à interface nem pode ser
+            // confirmado na frase, independentemente de como o modelo o
+            // tenha grafado.
+            val letra = LetterDecision.normalizarSaida(predicao.letra)
             val confianca = predicao.confianca
             val modo = predicao.modo
 

@@ -51,6 +51,13 @@ internal class LetraEngine(
     private val modelosDinamicosIndividuais = carregarModelosIndividuais(
         context, labelsDinamico, "letras_dinamicas"
     )
+    private val reforcosDinamicosRestritos: Set<String> = runCatching {
+        context.assets.open("letras_dinamicas/reforcos_restritos.txt")
+            .bufferedReader().readLines()
+            .map { it.trim().uppercase() }
+            .filter { it.isNotBlank() }
+            .toSet()
+    }.getOrDefault(emptySet())
     private val trainingStore = CalibrationTrainingStore(context, labelsEstatico, labelsDinamico)
 
     private val bufferLm          = ArrayDeque<FloatArray>()
@@ -374,7 +381,10 @@ internal class LetraEngine(
         return LetterDecision.combinarComReforcoRestrito(
             base = geral,
             reforco = reforco,
-            labelsDoReforco = reforcosEstaticosRestritos
+            labelsDoReforco = reforcosEstaticosRestritos,
+            // U estava aparecendo para qualquer gesto. Agora ele precisa ser
+            // confirmado pelos dois modelos e também não pode roubar C/V.
+            labelsQueExigemConcordancia = setOf("U")
         )
     }
 
@@ -416,10 +426,16 @@ internal class LetraEngine(
     }
 
     private fun classificarDinamicoOrientado(entrada: FloatArray): Prediction {
-        if (modelosDinamicosIndividuais.isNotEmpty()) {
+        // Mantém a precedência dos individuais antigos. Os reforços treinados
+        // só com algumas letras não podem esconder J/Z nem qualquer decisão
+        // do modelo geral fora do grupo H/K/X.
+        val individuaisPrioritarios = modelosDinamicosIndividuais.filterNot {
+            it.label in reforcosDinamicosRestritos
+        }
+        if (individuaisPrioritarios.isNotEmpty()) {
             val individual = classificarIndividual(
                 entrada = entrada,
-                modelos = modelosDinamicosIndividuais,
+                modelos = individuaisPrioritarios,
                 features = LibrasAnalyzer.FEATURES_DINAMICO,
                 confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
                 margemMinima = LibrasAnalyzer.MARGEM_DINAMICA_MINIMA,
@@ -428,11 +444,42 @@ internal class LetraEngine(
             if (individual.letra != "-") return individual
         }
 
-        return classificarDinamicoComModelo(
+        val geral = classificarDinamicoComModelo(
             entrada = entrada,
             session = sessionDinamico,
             labels = labelsDinamico,
             modo = "dinamico"
+        )
+
+        val modelosRestritos = modelosDinamicosIndividuais.filter {
+            it.label in reforcosDinamicosRestritos
+        }
+        if (modelosRestritos.isEmpty()) return geral
+
+        val reforco = classificarIndividual(
+            entrada = entrada,
+            modelos = modelosRestritos,
+            features = LibrasAnalyzer.FEATURES_DINAMICO,
+            confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
+            margemMinima = LibrasAnalyzer.MARGEM_DINAMICA_MINIMA,
+            modo = "dinamico_individual_restrito",
+            confiancaPorLabel = reforcosDinamicosRestritos.associateWith { label ->
+                if (label == "X") LibrasAnalyzer.CONFIANCA_REFORCO_DINAMICO_X
+                else LibrasAnalyzer.CONFIANCA_REFORCO_DINAMICO_HK
+            }
+        )
+        return LetterDecision.combinarComReforcoRestrito(
+            base = geral,
+            reforco = reforco,
+            labelsDoReforco = reforcosDinamicosRestritos,
+            // O geral rejeita 153/199 janelas de H, 222/319 de K e todas as
+            // de X. Os modelos dedicados passam a poder responder nesses
+            // casos, ainda sujeitos à confiança por letra, margem, movimento
+            // sustentado e estabilidade antes de entrar na frase.
+            labelsPermitidosSemBase = setOf("H", "K", "X"),
+            // O geral também confunde H com K e K com X. Dentro deste grupo,
+            // só o reforço dedicado pode dar a palavra final.
+            exigirReforcoParaGrupo = true
         )
     }
 
@@ -455,7 +502,8 @@ internal class LetraEngine(
         features: Int,
         confiancaMinima: Float,
         margemMinima: Float,
-        modo: String
+        modo: String,
+        confiancaPorLabel: Map<String, Float> = emptyMap()
     ): Prediction {
         val pontuacoes = modelos.map { modelo ->
             val probs = rodarModelo(modelo.session, entrada, features)
@@ -473,7 +521,8 @@ internal class LetraEngine(
             confiancaMinima = confiancaMinima,
             margemMinima = margemMinima,
             confiancaSemRival = LibrasAnalyzer.CONFIANCA_INDIVIDUAL_SEM_RIVAL,
-            modo = modo
+            modo = modo,
+            confiancaPorLabel = confiancaPorLabel
         )
     }
 
