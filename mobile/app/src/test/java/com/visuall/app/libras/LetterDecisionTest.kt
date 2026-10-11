@@ -17,6 +17,145 @@ class LetterDecisionTest {
 
     private val labels = listOf("A", "B", "C")
 
+    @Test
+    fun `nao sei sempre vira silencio`() {
+        assertEquals("-", LetterDecision.normalizarSaida("NADA"))
+        assertEquals("-", LetterDecision.normalizarSaida("nada"))
+        assertEquals("-", LetterDecision.normalizarSaida(""))
+        assertEquals("-", LetterDecision.normalizarSaida("   "))
+        assertEquals("-", LetterDecision.normalizarSaida("-"))
+    }
+
+    @Test
+    fun `letra conhecida continua intacta`() {
+        assertEquals("X", LetterDecision.normalizarSaida("X"))
+    }
+
+    @Test
+    fun `reforco restrito nao sobrescreve letra de fora do grupo`() {
+        val base = Prediction("A", 0.96f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("A", resultado.letra)
+    }
+
+    @Test
+    fun `reforco restrito pode desempatar dentro do proprio grupo`() {
+        val base = Prediction("U", 0.91f, "estatico")
+        val reforco = Prediction("V", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("V", resultado.letra)
+    }
+
+    @Test
+    fun `reforco restrito nao atua sem permissao quando geral nao sabe`() {
+        val base = Prediction("-", 0.60f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("U", "V")
+        )
+
+        assertEquals("-", resultado.letra)
+    }
+
+    @Test
+    fun `reforco explicitamente permitido atua quando geral nao sabe`() {
+        val base = Prediction("-", 0.60f, "dinamico")
+        val reforco = Prediction("X", 0.82f, "dinamico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base, reforco, setOf("H", "K", "X"), labelsPermitidosSemBase = setOf("X")
+        )
+
+        assertEquals("X", resultado.letra)
+    }
+
+    @Test
+    fun `letra com falso positivo exige concordancia dos dois modelos`() {
+        val base = Prediction("U", 0.99f, "estatico")
+        val reforco = Prediction("-", 0.80f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base,
+            reforco,
+            setOf("C", "U", "V"),
+            labelsQueExigemConcordancia = setOf("U")
+        )
+
+        assertEquals("-", resultado.letra)
+    }
+
+    @Test
+    fun `reforco com falso positivo nao rouba outra letra`() {
+        val base = Prediction("C", 0.99f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base,
+            reforco,
+            setOf("C", "U", "V"),
+            labelsQueExigemConcordancia = setOf("U")
+        )
+
+        assertEquals("C", resultado.letra)
+    }
+
+    @Test
+    fun `letra confirmada pelos dois modelos e aceita`() {
+        val base = Prediction("U", 0.96f, "estatico")
+        val reforco = Prediction("U", 0.99f, "estatico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base,
+            reforco,
+            setOf("C", "U", "V"),
+            labelsQueExigemConcordancia = setOf("U")
+        )
+
+        assertEquals("U", resultado.letra)
+    }
+
+    @Test
+    fun `grupo que exige reforco nao aceita chute do modelo geral`() {
+        val base = Prediction("K", 0.99f, "dinamico")
+        val reforco = Prediction("-", 0.80f, "dinamico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base,
+            reforco,
+            setOf("H", "K", "X"),
+            labelsPermitidosSemBase = setOf("H", "K", "X"),
+            exigirReforcoParaGrupo = true
+        )
+
+        assertEquals("-", resultado.letra)
+    }
+
+    @Test
+    fun `reforco corrige confusao do geral dentro do grupo dinamico`() {
+        val base = Prediction("K", 0.99f, "dinamico")
+        val reforco = Prediction("H", 0.98f, "dinamico_individual_restrito")
+
+        val resultado = LetterDecision.combinarComReforcoRestrito(
+            base,
+            reforco,
+            setOf("H", "K", "X"),
+            labelsPermitidosSemBase = setOf("H", "K", "X"),
+            exigirReforcoParaGrupo = true
+        )
+
+        assertEquals("H", resultado.letra)
+    }
+
     private fun estatico(probs: FloatArray) = LetterDecision.deProbabilidades(
         probs = probs,
         labels = labels,
@@ -155,6 +294,19 @@ class LetterDecisionTest {
         // Dois binários dizendo "sou eu" com 0.99 é o sintoma de modelos que
         // não aprenderam a rejeitar -- responder aí é chutar.
         assertEquals("-", individual("H" to 0.99f, "K" to 0.98f).letra)
+    }
+
+    @Test
+    fun `limiar medido por label aceita X sem afrouxar os demais`() {
+        val p = LetterDecision.deModelosIndividuais(
+            pontuacoes = listOf("H" to 0.10f, "K" to 0.05f, "X" to 0.82f),
+            confiancaMinima = LibrasAnalyzer.CONFIANCA_INDIVIDUAL,
+            margemMinima = LibrasAnalyzer.MARGEM_DINAMICA_MINIMA,
+            confiancaSemRival = LibrasAnalyzer.CONFIANCA_INDIVIDUAL_SEM_RIVAL,
+            modo = "dinamico_individual_restrito",
+            confiancaPorLabel = mapOf("X" to LibrasAnalyzer.CONFIANCA_REFORCO_DINAMICO_X)
+        )
+        assertEquals("X", p.letra)
     }
 
     @Test
