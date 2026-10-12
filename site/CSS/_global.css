@@ -1,0 +1,88 @@
+/* ==========================================================================
+   VisuAll — Tokens de design
+   Fonte única de verdade para cor, tipografia, espaçamento e movimento.
+   Sistema visual: vazio preto, tipografia branca em escala grande e peso
+   leve, amarelo e dourado (da logo e do app) em tudo que é interativo.
+   ========================================================================== */
+
+/* A fonte (Inter, no lugar da PP Neue Montreal, que é paga) e os demais
+   arquivos de estilo são ligados no <head> do HTML, nesta ordem:
+   _global, reset, header, body, footer. */
+
+:root{
+    /* --- Cores ------------------------------------------------------------ */
+    --color-preto: #000000;
+    --color-branco: #ffffff;
+    --color-prata: #bdbdbd;         /* texto corrido secundário */
+    --color-cinza: #9a9a9a;         /* navegação em repouso, rótulos discretos */
+    --color-amarelo: #ffd34d;       /* ações, rótulos, destaques */
+    --color-dourado: #e8a31f;       /* contornos do aparelho, tom do app */
+    --color-linha: rgba(255, 255, 255, 0.16);
+    --color-cartao: #0d0d0d;                           /* fundo dos cartões, um degrau acima do preto */
+    --color-cartao-destaque: rgba(255, 211, 77, 0.07); /* cartão em evidência */
+    --color-vidro: rgba(12, 12, 12, 0.72);
+    --color-veu-amarelo: rgba(255, 211, 77, 0.14);
+
+    /* --- Tipografia: família ---------------------------------------------- */
+    --font-principal: 'PPNeueMontreal', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* --- Tipografia: escala ----------------------------------------------- */
+    --text-caption: 12px;
+    --leading-caption: 1.5;
+    --text-label: 14px;
+    --leading-label: 1.2;
+    --tracking-label: 0.025em;
+    --text-body: 18px;
+    --leading-body: 1.5;
+    --text-heading-2xs: 24px;
+    --leading-heading-2xs: 1.3;
+    --text-heading-xs: 27px;
+    --leading-heading-xs: 1.15;
+    --text-subheading: clamp(26px, 3vw, 36px);
+    --leading-subheading: 1.2;
+    --text-heading: clamp(36px, 4.6vw, 64px);
+    --leading-heading: 1.05;
+    --text-display: clamp(46px, 6.4vw, 96px);
+    --leading-display: 1;
+    --tracking-apertado: -0.04em;   /* títulos de 34px para cima */
+
+    /* --- Tipografia: pesos ------------------------------------------------ */
+    --font-weight-extralight: 200;  /* frases de apoio grandes (24px+) */
+    --font-weight-light: 300;       /* texto corrido de 18px: leve, mas legível */
+    --font-weight-regular: 400;     /* títulos: a hierarquia vem da escala */
+    --font-weight-semibold: 600;    /* rótulos e navegação em caixa alta */
+
+    /* --- Espaçamento (base 6px) ------------------------------------------- */
+    --spacing-6: 6px;
+    --spacing-12: 12px;
+    --spacing-18: 18px;
+    --spacing-24: 24px;
+    --spacing-30: 30px;
+    --spacing-36: 36px;
+    --spacing-60: 60px;
+    --spacing-96: 96px;
+    --spacing-120: 120px;
+
+    /* --- Layout ----------------------------------------------------------- */
+    --page-max-width: 1280px;
+    --margem-pagina: 24px;
+    --altura-header: 104px;
+
+    /* --- Raios ------------------------------------------------------------ */
+    --radius-3xl: 24px;
+    --radius-full: 9999px;
+
+    /* --- Movimento -------------------------------------------------------- */
+    --mola: cubic-bezier(0.22, 1, 0.36, 1);
+    --t-rapida: 0.18s var(--mola);
+    --t-media: 0.32s var(--mola);
+}
+
+@media (max-width: 560px){
+    :root{
+        --margem-pagina: 18px;
+        --altura-header: 76px;
+        --text-heading-2xs: 20px;
+        --text-heading-xs: 22px;
+    }
+}

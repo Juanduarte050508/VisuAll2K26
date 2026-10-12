@@ -1,0 +1,1653 @@
+/* ==========================================================================
+   Corpo — hero, explorador do app, seções e grades
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Peças compartilhadas — rótulos, animações de base
+   -------------------------------------------------------------------------- */
+
+/* Rótulo pequeno em caixa alta: a única voz "gritada" do sistema */
+.hero-selo,
+.secao-rotulo,
+.cartao-numero,
+.etapa::before,
+.x-info-rotulo,
+.galeria-video-titulo,
+.link-perfil{
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-amarelo);
+}
+
+@keyframes entrar{
+    from{
+        opacity: 0;
+        translate: 0 24px;
+    }
+    to{
+        opacity: 1;
+        translate: 0 0;
+    }
+}
+
+@keyframes flutuar{
+    from{ translate: 0 -8px; }
+    to{   translate: 0 8px; }
+}
+
+@keyframes orbitar{
+    to{ rotate: 360deg; }
+}
+
+/* --------------------------------------------------------------------------
+   2. Botões — o que é clicável é amarelo
+   -------------------------------------------------------------------------- */
+
+.btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-12);
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color var(--t-rapida), color var(--t-rapida);
+}
+
+/* A seta avança no hover: convite explícito ao clique */
+.btn::after{
+    content: '→' / '';
+    transition: translate var(--t-rapida);
+}
+
+.btn:hover::after{
+    translate: 4px 0;
+}
+
+.btn--primario{
+    padding: var(--spacing-18) var(--spacing-24);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+}
+
+.btn--primario:hover{
+    background-color: var(--color-branco);
+}
+
+/* Secundário: texto puro, sem caixa */
+.btn--secundario{
+    padding: var(--spacing-18) var(--spacing-6);
+    color: var(--color-branco);
+}
+
+.btn--secundario:hover{
+    color: var(--color-amarelo);
+}
+
+/* --------------------------------------------------------------------------
+   3. Hero — título gigante à esquerda, logo e app à direita
+   -------------------------------------------------------------------------- */
+
+.hero{
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: center;
+    gap: var(--spacing-60) var(--spacing-36);
+    width: min(100% - 2 * var(--margem-pagina), var(--page-max-width));
+    min-height: calc(100vh - var(--altura-header));
+    min-height: calc(100svh - var(--altura-header));
+    margin-inline: auto;
+    padding-block: var(--spacing-60);
+}
+
+/* Entrada em cascata */
+.hero-selo,
+.hero h1,
+.hero-lead,
+.hero-acoes,
+.hero-aparelho,
+.hero-metricas{
+    animation: entrar 0.9s var(--mola) both;
+}
+
+.hero h1{         animation-delay: 0.08s; }
+.hero-lead{       animation-delay: 0.18s; }
+.hero-acoes{      animation-delay: 0.28s; }
+.hero-aparelho{   animation-delay: 0.45s; }
+.hero-metricas{   animation-delay: 0.55s; }
+
+.hero-selo{
+    margin-bottom: var(--spacing-18);
+}
+
+.hero h1{
+    font-size: var(--text-display);
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-apertado);
+}
+
+.hero h1 em{
+    font-style: normal;
+    color: var(--color-amarelo);
+}
+
+.hero-lead{
+    max-width: 34ch;
+    margin-top: var(--spacing-30);
+    font-size: var(--text-heading-2xs);
+    font-weight: var(--font-weight-extralight);
+    line-height: var(--leading-heading-2xs);
+    color: var(--color-prata);
+}
+
+.hero-acoes{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-12) var(--spacing-24);
+    margin-top: var(--spacing-36);
+}
+
+/* Palco visual: campo de triângulos, órbitas, logo e aparelho ------------- */
+
+.hero-visual{
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+}
+
+@keyframes deriva{
+    to{ background-position: 260px 260px; }
+}
+
+/* Constelação: triângulos contornados à deriva, esmaecendo nas bordas */
+.hero-visual::before{
+    content: '';
+    position: absolute;
+    inset: -12%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' fill='none' stroke-width='1.2'%3E%3Cpath stroke='%23ffd34d' d='M30 40l9 16H21z' transform='rotate(20 30 48)'/%3E%3Cpath stroke='%23e8a31f' d='M150 22l7 12h-14z' transform='rotate(-35 150 28)'/%3E%3Cpath stroke='%23ffffff' stroke-opacity='.5' d='M222 96l6 10h-12z' transform='rotate(60 222 101)'/%3E%3Cpath stroke='%23ffd34d' stroke-opacity='.6' d='M96 130l8 14H88z' transform='rotate(-15 96 137)'/%3E%3Cpath stroke='%23e8a31f' d='M40 200l6 10H34z' transform='rotate(45 40 205)'/%3E%3Cpath stroke='%23ffffff' stroke-opacity='.35' d='M180 190l9 16h-18z' transform='rotate(10 180 198)'/%3E%3Cpath stroke='%23ffd34d' d='M236 236l5 9h-10z' transform='rotate(-50 236 240)'/%3E%3C/svg%3E");
+    background-size: 260px 260px;
+    -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+    animation: deriva 50s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes surgir-objeto{
+    from{
+        opacity: 0;
+        scale: 0.6;
+    }
+    to{
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+.hero-objeto{
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 84%;
+    aspect-ratio: 1;
+    pointer-events: none;
+    animation: surgir-objeto 1.4s var(--mola) both;
+}
+
+/* Duas órbitas tracejadas girando em sentidos opostos */
+.hero-objeto::before,
+.hero-objeto::after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px dashed var(--color-dourado);
+    border-radius: var(--radius-full);
+    opacity: 0.5;
+    animation: orbitar 70s linear infinite;
+}
+
+.hero-objeto::after{
+    inset: 13%;
+    border-color: var(--color-branco);
+    opacity: 0.18;
+    animation-duration: 45s;
+    animation-direction: reverse;
+}
+
+.objeto-logo{
+    position: relative;
+    z-index: 1;
+    width: 78%;
+    height: auto;
+    animation: flutuar 5s ease-in-out infinite alternate;
+}
+
+/* Aparelho em miniatura: atalho para o explorador */
+.hero-aparelho{
+    position: absolute;
+    right: 0;
+    bottom: 2%;
+    z-index: 2;
+    width: 34%;
+    overflow: hidden;
+    border: 1px solid var(--color-dourado);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-preto);
+    rotate: 7deg;
+    transition: rotate var(--t-media), scale var(--t-media), border-color var(--t-media);
+}
+
+.hero-aparelho img{
+    width: 100%;
+    height: auto;
+}
+
+.hero-aparelho:hover,
+.hero-aparelho:focus-visible{
+    rotate: 0deg;
+    scale: 1.06;
+    border-color: var(--color-amarelo);
+}
+
+/* Faixa de números --------------------------------------------------------- */
+
+.hero-metricas{
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-24) var(--spacing-36);
+}
+
+.metrica{
+    padding-top: var(--spacing-24);
+    border-top: 1px solid var(--color-linha);
+}
+
+.metrica dt{
+    font-size: var(--text-heading);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-apertado);
+    color: var(--color-amarelo);
+}
+
+.metrica dd{
+    max-width: 30ch;
+    margin-top: var(--spacing-6);
+    color: var(--color-prata);
+}
+
+/* --------------------------------------------------------------------------
+   4. Estrutura de seção
+   -------------------------------------------------------------------------- */
+
+.secao{
+    padding: var(--spacing-96) var(--margem-pagina);
+    border-top: 1px solid var(--color-linha);
+    scroll-margin-top: var(--altura-header);
+}
+
+.recipiente{
+    display: grid;
+    gap: var(--spacing-60);
+    width: 100%;
+    max-width: var(--page-max-width);
+    margin-inline: auto;
+}
+
+/* Cabeçalho de seção: título | logo | descrição ----------------------------- */
+
+.secao-cabecalho{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--spacing-18) var(--spacing-60);
+}
+
+.secao-rotulo{
+    grid-column: 1 / -1;
+}
+
+.secao-titulo{
+    max-width: 15ch;
+    font-size: var(--text-heading);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-apertado);
+}
+
+/* Objeto central: a logo, repetida no meio de cada tela */
+.secao-objeto{
+    width: clamp(110px, 12vw, 170px);
+    height: auto;
+    animation: flutuar 5s ease-in-out infinite alternate;
+}
+
+.secao-lead{
+    max-width: 32ch;
+    font-size: var(--text-heading-2xs);
+    font-weight: var(--font-weight-extralight);
+    line-height: var(--leading-heading-2xs);
+    color: var(--color-prata);
+}
+
+/* --------------------------------------------------------------------------
+   5. Explorador do app — atalhos, celular e explicação
+      (o celular em si, com todas as telas do app, está em CSS/app.css)
+   -------------------------------------------------------------------------- */
+
+.explorador{
+    display: grid;
+    gap: var(--spacing-36);
+    padding: var(--spacing-36);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+}
+
+/* Atalhos: levam direto a cada tela do app */
+.x-atalhos{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--spacing-6);
+}
+
+.x-atalhos button{
+    padding: var(--spacing-12) var(--spacing-18);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--color-prata);
+    cursor: pointer;
+    transition: background-color var(--t-rapida), border-color var(--t-rapida), color var(--t-rapida);
+}
+
+.x-atalhos button:hover{
+    border-color: var(--color-amarelo);
+    color: var(--color-branco);
+}
+
+.x-atalhos button[aria-pressed="true"]{
+    border-color: var(--color-amarelo);
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+}
+
+/* Palco: celular à esquerda, explicação à direita. --w é a largura do celular */
+.x-palco{
+    --w: 300px;
+    display: grid;
+    grid-template-columns: var(--w) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--spacing-60);
+    width: 100%;
+    max-width: 920px;
+    margin-inline: auto;
+}
+
+@keyframes info-trocar{
+    from{
+        opacity: 0;
+        translate: 0 12px;
+    }
+    to{
+        opacity: 1;
+        translate: 0 0;
+    }
+}
+
+.x-info.trocando{
+    animation: info-trocar 0.4s var(--mola);
+}
+
+.x-info h3{
+    margin-top: var(--spacing-12);
+    font-size: var(--text-heading);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-apertado);
+}
+
+.x-info-texto{
+    max-width: 40ch;
+    margin-top: var(--spacing-18);
+    font-size: var(--text-heading-2xs);
+    font-weight: var(--font-weight-extralight);
+    line-height: var(--leading-heading-2xs);
+    color: var(--color-prata);
+}
+
+/* Dica do próximo passo, com um fio amarelo à esquerda */
+.x-info-dica{
+    max-width: 44ch;
+    margin-top: var(--spacing-24);
+    padding-left: var(--spacing-18);
+    border-left: 2px solid var(--color-amarelo);
+    color: var(--color-branco);
+}
+
+/* Captura do app que acompanha algumas explicações (ex.: a tela deitada) */
+.x-info-imagem{
+    display: block;
+    width: min(100%, 420px);
+    height: auto;
+    margin-top: var(--spacing-24);
+    border: 1px solid var(--color-dourado);
+    border-radius: var(--spacing-18);
+}
+
+.x-info-imagem[hidden]{
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   6. Conteúdo das seções 02 a 05
+      Cada seção tem um formato próprio, para não parecerem a mesma grade
+      repetida: painel dividido, linha do tempo, mosaico e ficha técnica.
+   -------------------------------------------------------------------------- */
+
+/* Títulos e textos: iguais em todas, é o formato que muda */
+.cartao h3,
+.etapa h3,
+.card-publico h3,
+.item-tecnologia dt{
+    font-size: var(--text-heading-xs);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-heading-xs);
+    letter-spacing: -0.02em;
+}
+
+.cartao p,
+.etapa p,
+.card-publico p,
+.item-tecnologia dd{
+    margin-top: var(--spacing-12);
+    color: var(--color-prata);
+}
+
+/* 02 Solução: painel dividido ------------------------------------------------
+   Um único painel com duas metades, o problema à esquerda e a resposta
+   destacada à direita, ligados por uma seta no meio. */
+
+.grade-solucao{
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+}
+
+.grade-solucao::after{
+    content: '→' / '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    translate: -50% -50%;
+    border-radius: var(--radius-full);
+    background-color: var(--color-amarelo);
+    font-size: var(--text-heading-2xs);
+    line-height: 1;
+    color: var(--color-preto);
+}
+
+.cartao{
+    padding: var(--spacing-60) var(--spacing-60) var(--spacing-60) var(--spacing-36);
+}
+
+.cartao h3{
+    font-size: var(--text-subheading);
+    line-height: var(--leading-subheading);
+    letter-spacing: -0.03em;
+}
+
+.cartao p + p{
+    margin-top: var(--spacing-12);
+}
+
+.cartao-numero{
+    display: inline-block;
+    margin-bottom: var(--spacing-24);
+    padding: var(--spacing-6) var(--spacing-12);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-full);
+}
+
+.cartao--resposta{
+    padding-inline: var(--spacing-60) var(--spacing-36);
+    border-left: 1px solid var(--color-amarelo);
+    background-color: var(--color-cartao-destaque);
+}
+
+.cartao--resposta .cartao-numero{
+    border-color: var(--color-amarelo);
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+}
+
+/* 03 Funcionamento: linha do tempo -------------------------------------------
+   Sem caixas: quatro marcos numerados sobre um fio que os liga em ordem. */
+
+.etapas{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-36);
+    counter-reset: etapa;
+}
+
+.etapa{
+    position: relative;
+    padding-right: var(--spacing-12);
+    counter-increment: etapa;
+}
+
+/* Marco numerado */
+.etapa::before{
+    content: counter(etapa);
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: var(--spacing-30);
+    border-radius: var(--radius-full);
+    background-color: var(--color-amarelo);
+    font-size: var(--text-heading-2xs);
+    letter-spacing: 0;
+    color: var(--color-preto);
+    transition: scale var(--t-media);
+}
+
+.etapa:hover::before{
+    scale: 1.12;
+}
+
+/* Fio que sai de um marco e chega no seguinte */
+.etapa:not(:last-child)::after{
+    content: '';
+    position: absolute;
+    top: 26px;
+    left: 52px;
+    right: calc(var(--spacing-36) * -1);
+    height: 2px;
+    background: linear-gradient(to right, var(--color-amarelo), rgba(255, 211, 77, 0.25));
+}
+
+/* Frase de destaque "processamento local": faixa com barra amarela à esquerda */
+.destaque-local{
+    padding: var(--spacing-30) var(--spacing-36);
+    border-left: 3px solid var(--color-amarelo);
+    border-radius: 0 var(--radius-3xl) var(--radius-3xl) 0;
+    background-color: var(--color-cartao-destaque);
+}
+
+.destaque-local p{
+    max-width: 40ch;
+    font-size: var(--text-subheading);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-subheading);
+    letter-spacing: -0.03em;
+}
+
+/* 04 Público-alvo: mosaico ---------------------------------------------------
+   Cartões de larguras diferentes, com um número grande e apagado no canto. */
+
+.grade-publico{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-24);
+    counter-reset: publico;
+}
+
+.card-publico{
+    position: relative;
+    display: grid;
+    align-content: end;
+    min-height: 250px;
+    /* o alto do cartão fica reservado ao número: o texto nunca passa por cima */
+    padding: 108px var(--spacing-30) var(--spacing-30);
+    overflow: hidden;
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+    counter-increment: publico;
+    transition: border-color var(--t-media), translate var(--t-media);
+}
+
+/* O primeiro e o último ocupam duas colunas */
+.card-publico:first-child,
+.card-publico:last-child{
+    grid-column: span 2;
+}
+
+.card-publico::before{
+    content: counter(publico, decimal-leading-zero);
+    position: absolute;
+    top: var(--spacing-18);
+    right: var(--spacing-24);
+    font-size: 78px;
+    font-weight: var(--font-weight-regular);
+    line-height: 1;
+    letter-spacing: var(--tracking-apertado);
+    color: rgba(255, 211, 77, 0.16);
+    transition: color var(--t-media);
+}
+
+.card-publico:hover{
+    border-color: var(--color-amarelo);
+    translate: 0 -4px;
+}
+
+.card-publico:hover::before{
+    color: var(--color-amarelo);
+}
+
+.card-publico p{
+    max-width: 52ch;
+}
+
+/* 05 Tecnologia: ficha técnica -----------------------------------------------
+   Linhas em vez de cartões: o nome à esquerda, a descrição à direita. */
+
+.grade-tecnologia{
+    display: grid;
+    border-top: 1px solid var(--color-linha);
+    counter-reset: tecnologia;
+}
+
+.item-tecnologia{
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    align-items: baseline;
+    gap: var(--spacing-12) var(--spacing-60);
+    padding: var(--spacing-30) var(--spacing-24);
+    border-bottom: 1px solid var(--color-linha);
+    counter-increment: tecnologia;
+    transition: background-color var(--t-media), padding-left var(--t-media);
+}
+
+/* Barra amarela que cresce à esquerda da linha em foco */
+.item-tecnologia::before{
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background-color: var(--color-amarelo);
+    scale: 1 0;
+    transition: scale var(--t-media);
+}
+
+.item-tecnologia:hover{
+    padding-left: var(--spacing-36);
+    background-color: var(--color-cartao-destaque);
+}
+
+.item-tecnologia:hover::before{
+    scale: 1 1;
+}
+
+.item-tecnologia dt{
+    font-size: var(--text-subheading);
+    line-height: var(--leading-subheading);
+    letter-spacing: -0.03em;
+    transition: color var(--t-rapida);
+}
+
+/* Número de ordem, pequeno e amarelo, antes do nome */
+.item-tecnologia dt::before{
+    content: counter(tecnologia, decimal-leading-zero);
+    margin-right: var(--spacing-18);
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-label);
+    vertical-align: middle;
+    color: var(--color-amarelo);
+}
+
+.item-tecnologia:hover dt{
+    color: var(--color-amarelo);
+}
+
+.item-tecnologia dd{
+    margin-top: 0;
+}
+/* --------------------------------------------------------------------------
+   7. Galeria — vídeo emoldurado em amarelo
+   -------------------------------------------------------------------------- */
+
+.galeria-video{
+    display: grid;
+    gap: var(--spacing-18);
+    width: min(100%, 1040px);
+    margin-inline: auto;
+}
+
+.moldura{
+    overflow: hidden;
+    border: 2px solid var(--color-amarelo);
+    border-radius: var(--radius-3xl);
+}
+
+.moldura--video iframe{
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    background-color: var(--color-preto);
+}
+
+/* Capa do vídeo: o player do YouTube só é carregado no clique (js/video.js).
+   Sem JavaScript, a capa é um link comum para o vídeo. */
+.video-capa{
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background-color: var(--color-preto);
+}
+
+.video-capa img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.82;
+    transition: opacity var(--t-media), scale var(--t-media);
+}
+
+.video-play{
+    position: absolute;
+    inset: 0;
+    width: clamp(64px, 9vw, 96px);
+    aspect-ratio: 1;
+    margin: auto;
+    border-radius: var(--radius-full);
+    background-color: var(--color-amarelo);
+    transition: scale var(--t-media);
+}
+
+.video-play::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 30%;
+    height: 36%;
+    margin: auto;
+    translate: 12% 0;
+    background-color: var(--color-preto);
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.video-capa:hover img,
+.video-capa:focus-visible img{
+    opacity: 1;
+    scale: 1.02;
+}
+
+.video-capa:hover .video-play,
+.video-capa:focus-visible .video-play{
+    scale: 1.08;
+}
+
+/* --------------------------------------------------------------------------
+   8. Equipe — carrossel em leque
+      Sem JavaScript: uma fila que rola para o lado.
+      Com js/carrossel.js (classe .carrossel-vivo): os cinco ficam na tela, o
+      do centro maior, os outros menores, mais apagados e em cinza conforme a
+      distância. O script só informa --d (distância ao centro) e --s (lado).
+   -------------------------------------------------------------------------- */
+
+.grade-equipe{
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 2 * var(--spacing-24)) / 3);
+    gap: var(--spacing-24);
+    overflow-x: auto;
+    padding-block: var(--spacing-6);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+.grade-equipe::-webkit-scrollbar{
+    display: none;
+}
+
+.integrante{
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    padding: var(--spacing-18) var(--spacing-18) var(--spacing-24);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+    scroll-snap-align: start;
+}
+
+.integrante-foto{
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: var(--spacing-18);
+    object-fit: cover;
+    filter: grayscale(1);
+    transition: filter 0.6s ease;
+}
+
+.integrante:hover .integrante-foto,
+.integrante:focus-within .integrante-foto{
+    filter: none;
+}
+
+.integrante h3{
+    margin-top: var(--spacing-18);
+    font-size: var(--text-heading-2xs);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.link-perfil{
+    margin-top: var(--spacing-12);
+    padding-block: var(--spacing-6);
+    transition: color var(--t-rapida);
+}
+
+.link-perfil:hover{
+    color: var(--color-branco);
+}
+
+/* Leque -------------------------------------------------------------------- */
+
+.grade-equipe.carrossel-vivo{
+    --lc: calc(min(100vw - 2 * var(--margem-pagina), var(--page-max-width)) * 0.22);   /* largura do cartão central */
+    --vao: var(--spacing-24);                                                          /* respiro entre cartões vizinhos */
+    /* Passo até o 1º vizinho e do 1º ao 2º: meia largura de cada cartão já
+       reduzido (escalas 1, 0.83 e 0.66) mais o vão, para nunca se encostarem */
+    --p1: calc(var(--lc) * 0.915 + var(--vao));
+    --p2: calc(var(--lc) * 0.745 + var(--vao));
+    position: relative;
+    display: block;
+    height: calc(var(--lc) + 190px);
+    overflow: hidden;
+    padding: 0;
+    touch-action: pan-y;
+}
+
+.carrossel-vivo .integrante{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--lc);
+    translate: calc(-50% + var(--s, 0) * (min(var(--d, 0), 1) * var(--p1) + max(var(--d, 0) - 1, 0) * var(--p2))) -50%;
+    scale: calc(1 - var(--d, 0) * 0.17);
+    opacity: calc(1 - var(--d, 0) * 0.3);
+    z-index: calc(10 - var(--d, 0));
+    cursor: pointer;
+    will-change: translate, scale, opacity;
+    transition: translate 0.9s cubic-bezier(0.16, 1, 0.3, 1), scale 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.6s ease, border-color var(--t-media);
+}
+
+/* Quem sai por um lado e volta pelo outro some, troca de lugar e reaparece,
+   em vez de atravessar a tela por cima dos demais */
+.carrossel-vivo .integrante.dando-volta{
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.carrossel-vivo .integrante.sem-transicao{
+    transition: none;
+}
+
+/* O do centro: colorido, com contorno amarelo */
+.carrossel-vivo .integrante.no-centro{
+    border-color: var(--color-amarelo);
+    cursor: default;
+}
+
+.carrossel-vivo .integrante.no-centro .integrante-foto{
+    filter: none;
+}
+
+/* Mouse em cima de qualquer um: borda amarela, cor de volta, opacidade cheia */
+.carrossel-vivo .integrante:not(.dando-volta):hover{
+    border-color: var(--color-amarelo);
+    opacity: 1;
+}
+
+/* Altura igual para nomes de uma ou duas linhas */
+.carrossel-vivo .integrante h3{
+    min-height: 2.4em;
+}
+
+/* Controles ---------------------------------------------------------------- */
+
+.carrossel-controles{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-24);
+    margin-top: calc(var(--spacing-24) * -1);
+}
+
+.carrossel-seta{
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--color-amarelo);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    font-size: var(--text-heading-2xs);
+    line-height: 1;
+    color: var(--color-amarelo);
+    cursor: pointer;
+    transition: background-color var(--t-rapida), color var(--t-rapida);
+}
+
+.carrossel-seta:hover{
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+}
+
+.carrossel-bolinhas{
+    display: flex;
+    gap: var(--spacing-12);
+}
+
+.carrossel-bolinha{
+    flex: none;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border: 1px solid var(--color-amarelo);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color var(--t-rapida), width 0.5s var(--mola);
+}
+
+/* área de toque maior que o desenho, para o dedo acertar */
+.carrossel-bolinha{
+    position: relative;
+}
+
+.carrossel-bolinha::after{
+    content: "";
+    position: absolute;
+    inset: -14px -6px;
+}
+
+.carrossel-bolinha[aria-current="true"]{
+    width: var(--spacing-36);
+    background-color: var(--color-amarelo);
+}
+/* --------------------------------------------------------------------------
+   9. Contato — canais em linhas grandes, cada uma clicável por inteiro
+   -------------------------------------------------------------------------- */
+
+.grade-contato{
+    font-style: normal;
+}
+
+/* Canais: cada um é uma linha inteira clicável, que acende em amarelo */
+.contato-canais{
+    display: grid;
+    border-top: 1px solid var(--color-linha);
+}
+
+.canal{
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-24);
+    padding: var(--spacing-24) var(--spacing-18);
+    border-bottom: 1px solid var(--color-linha);
+    transition: background-color var(--t-media), color var(--t-media), padding var(--t-media);
+}
+
+.canal-nome{
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-amarelo);
+    transition: color var(--t-media);
+}
+
+.canal-valor{
+    font-size: var(--text-subheading);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-subheading);
+    letter-spacing: -0.03em;
+    overflow-wrap: anywhere;
+}
+
+.canal-seta{
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--color-amarelo);
+    border-radius: var(--radius-full);
+    font-size: var(--text-heading-2xs);
+    line-height: 1;
+    color: var(--color-amarelo);
+    transition: background-color var(--t-media), color var(--t-media), rotate var(--t-media);
+}
+
+.canal:hover,
+.canal:focus-visible{
+    padding-inline: var(--spacing-30);
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+}
+
+.canal:hover .canal-nome,
+.canal:focus-visible .canal-nome{
+    color: var(--color-preto);
+}
+
+.canal:hover .canal-seta,
+.canal:focus-visible .canal-seta{
+    border-color: var(--color-preto);
+    background-color: var(--color-preto);
+    rotate: 45deg;
+}
+/* --------------------------------------------------------------------------
+   10. Animações guiadas pela rolagem — nativas, sem JavaScript
+   -------------------------------------------------------------------------- */
+
+@keyframes surgir{
+    from{
+        opacity: 0;
+        transform: translateY(26px);
+    }
+    to{
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Inclinação 3D da logo: entra de lado, assenta, sai girando */
+@keyframes inclinar{
+    0%{
+        opacity: 0;
+        transform: perspective(900px) rotateY(-75deg) rotateZ(-14deg) scale(0.6);
+    }
+    40%{
+        opacity: 1;
+        transform: perspective(900px) rotateY(0deg) rotateZ(-3deg) scale(1);
+    }
+    80%{
+        opacity: 1;
+        transform: perspective(900px) rotateY(0deg) rotateZ(3deg) scale(1);
+    }
+    100%{
+        opacity: 0.4;
+        transform: perspective(900px) rotateY(60deg) rotateZ(12deg) scale(0.8);
+    }
+}
+
+/* A logo do hero recua e gira enquanto a primeira tela vai embora */
+@keyframes recuar{
+    to{
+        transform: perspective(900px) rotateY(55deg) rotateZ(14deg) scale(0.7);
+    }
+}
+
+@supports (animation-timeline: view()){
+    @media (prefers-reduced-motion: no-preference){
+        .revela{
+            animation: surgir linear both;
+            animation-timeline: view();
+            animation-range: entry 5% cover 22%;
+        }
+
+        .secao-objeto{
+            animation: inclinar linear both;
+            animation-timeline: view();
+            animation-range: cover 0% cover 100%;
+        }
+
+        /* Mantém a flutuação (translate) e soma o recuo (transform) */
+        .objeto-logo{
+            animation: flutuar 5s ease-in-out infinite alternate, recuar linear both;
+            animation-timeline: auto, view();
+            animation-range: normal, exit 0% exit 100%;
+        }
+    }
+}
+
+/* --------------------------------------------------------------------------
+   11. Ajustes responsivos (desktop primeiro)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1040px){
+    /* Linha do tempo em pé: marcos à esquerda, fio descendo entre eles */
+    .etapas{
+        grid-template-columns: 1fr;
+        gap: var(--spacing-36);
+    }
+
+    .etapa{
+        min-height: 52px;
+        padding: 0 0 0 calc(52px + var(--spacing-24));
+    }
+
+    .etapa::before{
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin-bottom: 0;
+    }
+
+    .etapa:not(:last-child)::after{
+        top: 52px;
+        left: 25px;
+        right: auto;
+        bottom: calc(var(--spacing-36) * -1);
+        width: 2px;
+        height: auto;
+        background: linear-gradient(to bottom, var(--color-amarelo), rgba(255, 211, 77, 0.25));
+    }
+
+    /* Mosaico em duas colunas iguais */
+    .grade-publico{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card-publico:first-child,
+    .card-publico:last-child{
+        grid-column: auto;
+    }
+
+    .grade-equipe{
+        grid-auto-columns: calc((100% - var(--spacing-24)) / 2);
+    }
+}
+
+@media (max-width: 900px){
+    .secao{
+        padding-block: var(--spacing-60);
+    }
+
+    .recipiente{
+        gap: var(--spacing-36);
+    }
+
+    /* Hero em coluna única: texto, depois o palco visual, depois os números */
+    .hero{
+        grid-template-columns: 1fr;
+        min-height: 0;
+        padding-block: var(--spacing-36) var(--spacing-60);
+        row-gap: var(--spacing-36);
+    }
+
+    .hero-visual{
+        width: min(100%, 440px);
+        margin-inline: auto;
+    }
+
+    /* Cabeçalho de seção empilhado: rótulo, logo, título, descrição */
+    .secao-cabecalho{
+        grid-template-columns: 1fr;
+    }
+
+    .secao-rotulo{
+        order: -2;
+    }
+
+    .secao-objeto{
+        order: -1;
+        width: 96px;
+    }
+
+    /* Explorador em coluna: a explicação vira uma faixa compacta presa no topo,
+       logo abaixo do cabeçalho, para continuar visível enquanto a pessoa toca
+       nos botões. O celular é dimensionado pela altura da tela, para os dois
+       caberem juntos. */
+    .x-palco{
+        --w: clamp(220px, calc((100svh - var(--altura-header) - 230px) / 2.18), min(72vw, 300px));
+        grid-template-columns: 1fr;
+        justify-items: center;
+        row-gap: var(--spacing-18);
+    }
+
+    .x-info{
+        position: sticky;
+        top: calc(var(--altura-header) + var(--spacing-6));
+        z-index: 2;
+        order: -1;
+        width: 100%;
+        min-height: 132px;
+        padding: var(--spacing-12) var(--spacing-18);
+        border: 1px solid var(--color-linha);
+        border-radius: var(--spacing-18);
+        background-color: rgba(13, 13, 13, 0.94);
+    }
+
+    .x-info-rotulo{
+        font-size: var(--text-caption);
+    }
+
+    .x-info h3{
+        margin-top: 2px;
+        font-size: var(--text-body);
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: 0;
+    }
+
+    .x-info-texto{
+        max-width: none;
+        margin-top: var(--spacing-6);
+        font-size: 14px;
+        font-weight: var(--font-weight-regular);
+        line-height: 1.4;
+    }
+
+    .x-info-dica{
+        max-width: none;
+        margin-top: var(--spacing-6);
+        padding-left: 0;
+        border-left: 0;
+        font-size: 14px;
+        line-height: 1.4;
+        color: var(--color-amarelo);
+    }
+
+    .x-info-imagem{
+        width: min(100%, 260px);
+        margin-top: var(--spacing-12);
+    }
+
+    /* Painel dividido vira empilhado: a resposta desce para baixo do problema */
+    .grade-solucao{
+        grid-template-columns: 1fr;
+    }
+
+    .grade-solucao::after{
+        display: none;
+    }
+
+    .cartao,
+    .cartao--resposta{
+        padding: var(--spacing-36) var(--spacing-30);
+    }
+
+    .cartao--resposta{
+        border-top: 1px solid var(--color-amarelo);
+        border-left: 0;
+    }
+
+    /* Ficha técnica: nome em cima, descrição embaixo */
+    .item-tecnologia{
+        grid-template-columns: 1fr;
+    }
+
+    /* Leque mais fechado: cartão central maior, vizinhos espiando */
+    .grade-equipe.carrossel-vivo{
+        --lc: calc((100vw - 2 * var(--margem-pagina)) * 0.42);
+        --vao: var(--spacing-18);
+    }
+}
+
+@media (max-width: 560px){
+    .hero-acoes{
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* Um cartão por vez, com a ponta do próximo aparecendo: convida a arrastar */
+    .grade-equipe{
+        grid-auto-columns: 84%;
+    }
+
+    .grade-equipe.carrossel-vivo{
+        --lc: calc((100vw - 2 * var(--margem-pagina)) * 0.62);
+        --vao: var(--spacing-12);
+    }
+
+    .explorador{
+        padding: var(--spacing-24) var(--spacing-12);
+    }
+
+    .x-atalhos button{
+        padding: var(--spacing-12);
+        font-size: var(--text-caption);
+    }
+
+    .cartao,
+    .cartao--resposta,
+    .destaque-local{
+        padding: var(--spacing-24);
+    }
+
+    /* Canal: o nome sobe para cima do valor, a seta fica à direita */
+    .canal{
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--spacing-6) var(--spacing-18);
+        padding-inline: var(--spacing-6);
+    }
+
+    .canal-nome{
+        grid-column: 1;
+    }
+
+    .canal-valor{
+        grid-column: 1;
+    }
+
+    .canal-seta{
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        width: 44px;
+        height: 44px;
+    }
+
+    /* Sem hover em telas de toque: evita o "salto" disparado pelo tap */
+    .card-publico:hover{
+        translate: none;
+    }
+
+}
+/* Celular: conteúdo compacto. Em vez de cartões altos empilhados, cada seção
+   vira uma estrutura enxuta (faixa, lista ou tabela), com itens lado a lado
+   sempre que o texto é curto, para ninguém rolar muito por um bloco só. */
+@media (max-width: 560px){
+    .secao{
+        padding-block: 48px;
+    }
+
+    .recipiente{
+        gap: var(--spacing-24);
+    }
+
+    /* Cabeçalho de seção: rótulo e título à esquerda, logo pequena à direita */
+    .secao-cabecalho{
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--spacing-6) var(--spacing-18);
+    }
+
+    .secao-rotulo{
+        grid-area: 1 / 1;
+    }
+
+    .secao-titulo{
+        grid-area: 2 / 1;
+        font-size: 30px;
+    }
+
+    .secao-objeto{
+        grid-area: 1 / 2 / span 2;
+        width: 68px;
+    }
+
+    .secao-lead{
+        grid-area: 3 / 1 / auto / -1;
+        max-width: none;
+        margin-top: var(--spacing-6);
+        font-size: 17px;
+        font-weight: var(--font-weight-light);
+    }
+
+    /* Textos de apoio menores em todas as estruturas */
+    .cartao p,
+    .etapa p,
+    .card-publico p,
+    .item-tecnologia dd{
+        margin-top: var(--spacing-6);
+        font-size: 15px;
+        line-height: 1.45;
+    }
+
+    .cartao h3,
+    .etapa h3,
+    .card-publico h3,
+    .item-tecnologia dt{
+        font-size: 18px;
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+    }
+
+    /* Hero: os três números lado a lado, numa faixa só */
+    .hero-metricas{
+        gap: var(--spacing-12);
+    }
+
+    .metrica{
+        padding-top: var(--spacing-12);
+    }
+
+    .metrica dt{
+        font-size: 26px;
+    }
+
+    .metrica dd{
+        font-size: var(--text-caption);
+        line-height: 1.4;
+    }
+
+    /* 02 Solução: as duas metades continuam empilhadas, mas enxutas */
+    .cartao,
+    .cartao--resposta{
+        padding: var(--spacing-18);
+    }
+
+    .cartao h3{
+        font-size: 21px;
+    }
+
+    .cartao-numero{
+        margin-bottom: var(--spacing-12);
+        font-size: var(--text-caption);
+    }
+
+    /* 03 Funcionamento: linha do tempo com marcos menores */
+    .etapas{
+        gap: var(--spacing-18);
+    }
+
+    .etapa{
+        min-height: 34px;
+        padding-left: calc(34px + var(--spacing-12));
+    }
+
+    .etapa::before{
+        width: 34px;
+        height: 34px;
+        font-size: var(--text-label);
+    }
+
+    .etapa h3{
+        padding-top: 6px;
+    }
+
+    .etapa:not(:last-child)::after{
+        top: 34px;
+        left: 16px;
+        bottom: calc(var(--spacing-18) * -1);
+    }
+
+    .destaque-local{
+        padding: var(--spacing-18);
+    }
+
+    .destaque-local p{
+        font-size: 19px;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+    }
+
+    /* 04 Público-alvo: lista numerada, sem caixas */
+    .grade-publico{
+        grid-template-columns: 1fr;
+        gap: 0;
+        border-top: 1px solid var(--color-linha);
+    }
+
+    .card-publico{
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--spacing-12);
+        min-height: 0;
+        padding: var(--spacing-18) 0;
+        border: 0;
+        border-bottom: 1px solid var(--color-linha);
+        border-radius: 0;
+        background-color: transparent;
+    }
+
+    .card-publico::before{
+        position: static;
+        grid-row: 1 / span 2;
+        font-size: var(--text-label);
+        font-weight: var(--font-weight-semibold);
+        line-height: 23px;
+        letter-spacing: var(--tracking-label);
+        color: var(--color-amarelo);
+    }
+
+    .card-publico h3,
+    .card-publico p{
+        grid-column: 2;
+    }
+
+    /* Sem hover em telas de toque: evita o "salto" disparado pelo tap */
+    .card-publico:hover{
+        translate: none;
+    }
+
+    /* 05 Tecnologia: tabela de duas colunas, com as células divididas por fios */
+    .grade-tecnologia{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        overflow: hidden;
+        border: 1px solid var(--color-linha);
+        border-radius: var(--spacing-18);
+    }
+
+    .item-tecnologia,
+    .item-tecnologia:hover{
+        align-content: start;
+        gap: 0;
+        padding: var(--spacing-18) var(--spacing-12);
+    }
+
+    .item-tecnologia:nth-child(odd){
+        border-right: 1px solid var(--color-linha);
+    }
+
+    .item-tecnologia:nth-last-child(-n + 2){
+        border-bottom: 0;
+    }
+
+    .item-tecnologia dt::before{
+        display: block;
+        margin: 0 0 var(--spacing-6);
+        font-size: var(--text-caption);
+    }
+
+    /* Equipe e contato */
+    .grade-equipe.carrossel-vivo{
+        --lc: calc((100vw - 2 * var(--margem-pagina)) * 0.54);
+    }
+
+    .canal:hover{
+        padding-inline: var(--spacing-6);
+    }
+
+    .canal-valor{
+        font-size: 19px;
+    }
+
+    .canal-seta{
+        width: 38px;
+        height: 38px;
+    }
+}
+/* --------------------------------------------------------------------------
+   12. Com JavaScript — constelação no hero e títulos palavra por palavra
+   (classes aplicadas por js/constelacao.js; sem ele, nada aqui se aplica)
+   -------------------------------------------------------------------------- */
+
+.constelacao{
+    display: none;
+    position: absolute;
+    inset: -18%;
+    width: 136%;
+    height: 136%;
+    max-width: none;
+}
+
+/* A constelação assume o lugar da logo estática e dos triângulos em CSS */
+.constelacao-ativa .constelacao{
+    display: block;
+}
+
+.constelacao-ativa::before,
+.constelacao-ativa .objeto-logo{
+    display: none;
+}
+
+.constelacao-ativa .hero-objeto::before,
+.constelacao-ativa .hero-objeto::after{
+    opacity: 0.22;
+}
+
+/* Cada palavra sobe de dentro de uma "janela" que a recorta */
+.titulo-animado .palavra{
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    margin-block: -0.12em;
+    padding-block: 0.12em;
+}
+
+.titulo-animado .palavra > span{
+    display: inline-block;
+    translate: 0 115%;
+    transition: translate 1s var(--mola);
+    transition-delay: calc(var(--i) * 55ms);
+}
+
+.titulo-animado.visivel .palavra > span{
+    translate: 0 0;
+}
+
+/* O título do hero já entra pelas palavras: dispensa a entrada em bloco */
+.hero h1.titulo-animado{
+    animation: none;
+}
+/* --------------------------------------------------------------------------
+   13. Aparelho do hero — a tela inicial do app em miniatura
+       É o mesmo simulador de CSS/app.css, sem interação: ocupa a largura do
+       link que o envolve e escala inteiro, porque tudo dentro dele usa cqw.
+   -------------------------------------------------------------------------- */
+
+.app--miniatura{
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 738 / 1600;
+    border-radius: 0;
+    outline: 0;
+    pointer-events: none;
+}

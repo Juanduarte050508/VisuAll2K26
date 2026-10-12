@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisuAll: Libras em tempo real na câmera do seu smartphone</title>
+
+    <meta name="description" content="O VisuAll é um modo Libras integrado ao aplicativo de câmera do smartphone: reconhece sinais em tempo real e exibe a tradução na tela, com processamento 100% local e sem depender de internet.">
+    <meta name="author" content="Grupo VisuAll, FIAP">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Pré-visualização em redes sociais e aplicativos de mensagem -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:site_name" content="VisuAll">
+    <meta property="og:title" content="VisuAll: Libras em tempo real na câmera do seu smartphone">
+    <meta property="og:description" content="Um modo Libras dentro do app de câmera: reconhece sinais em tempo real, traduz na tela e funciona offline.">
+    <meta property="og:url" content="https://juanduarte050508.github.io/VisuAll/">
+    <meta property="og:image" content="https://juanduarte050508.github.io/VisuAll/images/logo-completa.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="icon" href="../images/favicon-64.png" type="image/png">
+    <link rel="apple-touch-icon" href="../images/favicon-180.png">
+
+    <!-- Antecipa a conexão com o servidor de fontes, reduzindo o atraso de carga -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonte e estilos ligados direto aqui (sem @import em cadeia). O "?v=" força o
+         navegador a buscar a versão nova em vez de reaproveitar uma antiga em cache. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&display=swap">
+    <link rel="stylesheet" href="../CSS/_global.css?v=15">
+    <link rel="stylesheet" href="../CSS/reset.css?v=15">
+    <link rel="stylesheet" href="../CSS/header.css?v=15">
+    <link rel="stylesheet" href="../CSS/body.css?v=15">
+    <link rel="stylesheet" href="../CSS/app.css?v=15">
+    <link rel="stylesheet" href="../CSS/footer.css?v=15">
+</head>
+<body>
+
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+    <header class="cabecalho">
+        <a class="marca" href="#inicio" aria-label="VisuAll, início">
+            <img src="../images/logo-marca.webp" alt="" class="marca-logo" width="840" height="500">
+            <span class="marca-nome">VisuAll</span>
+        </a>
+
+        <!-- Menu móvel sem JavaScript: a caixa de seleção guarda o estado aberto/fechado -->
+        <input type="checkbox" id="abrir-menu" class="menu-check so-leitor"
+               aria-label="Abrir e fechar o menu">
+        <label for="abrir-menu" class="menu-botao" aria-hidden="true">
+            <span></span>
+        </label>
+
+        <nav class="navegacao" aria-label="Menu principal">
+            <ul>
+                <li><a href="#explorar">O app</a></li>
+                <li><a href="#solucao">Solução</a></li>
+                <li><a href="#funcionamento">Como funciona</a></li>
+                <li><a href="#tecnologia">Tecnologia</a></li>
+                <li><a href="#galeria">Vídeo</a></li>
+                <li><a href="#equipe">Equipe</a></li>
+            </ul>
+        </nav>
+
+        <a class="cabecalho-cta" href="#contato">Falar com a equipe</a>
+    </header>
+
+    <main id="conteudo">
+
+        <!-- ================= HERO ================= -->
+        <section class="hero" id="inicio">
+            <div class="hero-conteudo">
+                <p class="hero-selo">Projeto acadêmico · 2026</p>
+
+                <h1>Libras em tempo real, <em>na câmera que você já tem</em></h1>
+
+                <p class="hero-lead">
+                    O VisuAll é um modo Libras dentro do próprio aplicativo de câmera do
+                    smartphone. Aponte, sinalize e a tradução aparece na tela,
+                    sem instalar nada extra e sem precisar de internet.
+                </p>
+
+                <div class="hero-acoes">
+                    <a class="btn btn--primario" href="#explorar">Explorar o app</a>
+                    <a class="btn btn--secundario" href="#funcionamento">Ver como funciona</a>
+                </div>
+            </div>
+
+            <!-- Objeto central: a logo, com o app rodando ao lado -->
+            <div class="hero-visual">
+                <!-- Constelação de triângulos que desenha o olho da logo (js/constelacao.js).
+                     Sem JavaScript, a logo estática abaixo continua no lugar. -->
+                <canvas class="constelacao" aria-hidden="true"></canvas>
+
+                <div class="hero-objeto" aria-hidden="true">
+                    <img src="../images/logo-marca.webp" alt="" class="objeto-logo" width="840" height="500">
+                </div>
+
+                <!-- A tela inicial do app (câmera), em miniatura. É a mesma interface do
+                     simulador da seção "Explore o app", aqui só como vitrine: sem botões. -->
+                <a class="hero-aparelho" href="#explorar" aria-label="Explorar as telas do aplicativo">
+                    <span class="app app--miniatura" data-tela="camera" aria-hidden="true">
+                        <span class="app-status"><span>22:50</span><span class="app-bateria">78</span></span>
+                        <span class="app-tela app-camera">
+                            <span class="cam-topo">
+                                <span class="cam-flash"><svg><use href="#i-flash"/></svg><b>A</b></span>
+                                <span class="cam-pilulas">
+                                    <span class="app-pilula">4:3</span>
+                                    <span class="app-pilula">OFF</span>
+                                    <span class="app-pilula"><svg><use href="#i-grade"/></svg></span>
+                                </span>
+                                <span class="app-redondo app-redondo--forte app-convite"><svg><use href="#i-pessoa"/></svg></span>
+                            </span>
+                            <span class="cam-area">
+                                <span class="cam-visor">
+                                    <img class="cam-cena" src="../images/logo-marca.webp" alt="" width="840" height="500">
+                                    <span class="cam-etiqueta">FOTO</span>
+                                    <span class="cam-zoom"><span>0.6x</span><span class="ativo">1x</span><span>2x</span><span>5x</span></span>
+                                </span>
+                            </span>
+                            <span class="cam-modos"><span class="ativo">FOTO</span><span>VÍDEO</span><span>PRO</span></span>
+                            <span class="cam-base">
+                                <span class="cam-galeria"><svg><use href="#i-imagem"/></svg></span>
+                                <span class="cam-disparo"></span>
+                                <span class="app-redondo"><svg><use href="#i-girar"/></svg></span>
+                            </span>
+                        </span>
+                        <span class="app-barra"></span>
+                    </span>
+                </a>
+            </div>
+
+            <dl class="hero-metricas">
+                <div class="metrica">
+                    <dt>10 mi+</dt>
+                    <dd>brasileiros com algum grau de deficiência auditiva</dd>
+                </div>
+                <div class="metrica">
+                    <dt>100%</dt>
+                    <dd>do processamento acontece no próprio aparelho</dd>
+                </div>
+                <div class="metrica">
+                    <dt>0</dt>
+                    <dd>downloads extras: já vive no app de câmera</dd>
+                </div>
+            </dl>
+        </section>
+
+        <!-- ================= EXPLORAR O APP ================= -->
+        <section class="secao" id="explorar">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">01 · Explore o app</p>
+                    <h2 class="secao-titulo">Explore o app de verdade</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Use o celular como se fosse o seu: cada botão reage como no
+                        aplicativo, e a explicação acompanha cada toque.
+                    </p>
+                </div>
+
+                <!-- Simulador do app: a interface foi refeita em HTML e CSS (CSS/app.css) e
+                     js/explorador.js guarda o estado (tela, modo, flash, zoom...) para cada
+                     botão reagir como no aplicativo. -->
+                <div class="explorador revela">
+                    <div class="x-atalhos" role="group" aria-label="Ir direto para uma tela do app">
+                        <button type="button" data-atalho="camera" aria-pressed="true">Câmera</button>
+                        <button type="button" data-atalho="libras" aria-pressed="false">Modo Libras</button>
+                        <button type="button" data-atalho="corpo" aria-pressed="false">Modo Corpo</button>
+                        <button type="button" data-atalho="oculos" aria-pressed="false">Óculos</button>
+                        <button type="button" data-atalho="resposta" aria-pressed="false">Resposta</button>
+                    </div>
+
+                    <div class="x-palco">
+                        <div class="app" data-tela="camera" role="group" aria-label="Simulador do aplicativo VisuAll">
+                            <!-- Ícones usados nos botões do simulador -->
+                            <svg class="app-icones" aria-hidden="true">
+                                <symbol id="i-flash" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M13 2 5 14h6l-1 8 8-12h-6z"/></symbol>
+                                <symbol id="i-grade" viewBox="0 0 24 24"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></symbol>
+                                <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none"/><path d="M5 9h14M12 9v5l-3 7M12 14l3 7"/></symbol>
+                                <symbol id="i-imagem" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 17 5-5 4 4 3-3 6 5"/></symbol>
+                                <symbol id="i-girar" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6M18 2v5h-5M6 22v-5h5"/></symbol>
+                                <symbol id="i-voltar" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+                                <symbol id="i-olho" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+                                <symbol id="i-historico" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5M3.5 3.5v5h5M12 7.5V12l3 2"/></symbol>
+                                <symbol id="i-cadeado" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+                                <symbol id="i-balao" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></symbol>
+                                <symbol id="i-lixeira" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+                                <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+                                <symbol id="i-virar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 12h7m-3-3 3 3-3 3"/></symbol>
+                                <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+                            </svg>
+
+                            <div class="app-status" aria-hidden="true"><span>22:50</span><span class="app-bateria">78</span></div>
+
+                            <!-- Tela 1: câmera -->
+                            <section class="app-tela app-camera" data-nome="camera" aria-label="Câmera">
+                                <div class="cam-topo">
+                                    <button type="button" class="cam-flash" data-acao="flash" aria-label="Flash">
+                                        <svg><use href="#i-flash"/></svg><b>A</b>
+                                    </button>
+                                    <div class="cam-pilulas">
+                                        <button type="button" class="app-pilula" data-acao="formato" aria-label="Formato da imagem">4:3</button>
+                                        <button type="button" class="app-pilula" data-acao="timer" aria-label="Timer">OFF</button>
+                                        <button type="button" class="app-pilula" data-acao="grade" aria-label="Grade" aria-pressed="false"><svg><use href="#i-grade"/></svg></button>
+                                    </div>
+                                    <button type="button" class="app-redondo app-redondo--forte app-convite" data-acao="abrir-libras" aria-label="Abrir o modo Libras">
+                                        <svg><use href="#i-pessoa"/></svg>
+                                    </button>
+                                </div>
+
+                                <div class="cam-area">
+                                    <div class="cam-visor">
+                                        <img class="cam-cena" src="../images/logo-marca.webp" alt="" width="840" height="500" loading="lazy">
+                                        <span class="cam-etiqueta">FOTO</span>
+                                        <span class="cam-contagem" aria-hidden="true"></span>
+                                        <div class="cam-zoom" role="group" aria-label="Zoom">
+                                            <button type="button" data-acao="zoom" data-valor="0.6" aria-pressed="false">0.6x</button>
+                                            <button type="button" data-acao="zoom" data-valor="1" aria-pressed="true">1x</button>
+                                            <button type="button" data-acao="zoom" data-valor="2" aria-pressed="false">2x</button>
+                                            <button type="button" data-acao="zoom" data-valor="5" aria-pressed="false">5x</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cam-modos" role="group" aria-label="Modo de captura">
+                                    <button type="button" data-acao="captura" data-valor="foto" aria-pressed="true">FOTO</button>
+                                    <button type="button" data-acao="captura" data-valor="video" aria-pressed="false">VÍDEO</button>
+                                    <button type="button" data-acao="captura" data-valor="pro" aria-pressed="false">PRO</button>
+                                </div>
+
+                                <div class="cam-base">
+                                    <button type="button" class="cam-galeria" data-acao="galeria" aria-label="Galeria"><svg><use href="#i-imagem"/></svg><b></b></button>
+                                    <button type="button" class="cam-disparo" data-acao="disparo" aria-label="Disparo"></button>
+                                    <button type="button" class="app-redondo" data-acao="inverter" aria-label="Inverter câmera"><svg><use href="#i-girar"/></svg></button>
+                                </div>
+                            </section>
+
+                            <!-- Tela 2: modo Libras (alfabeto, corpo e óculos são estados desta tela) -->
+                            <section class="app-tela app-libras" data-nome="libras" aria-label="Modo Libras">
+                                <div class="lib-topo">
+                                    <button type="button" class="app-redondo" data-acao="voltar" aria-label="Voltar"><svg><use href="#i-voltar"/></svg></button>
+                                    <button type="button" class="app-pilula app-pilula--forte lib-linhas" data-acao="linhas" aria-pressed="false">LINHAS: OFF</button>
+                                    <span class="lib-titulo">Modo Libras</span>
+                                    <button type="button" class="app-redondo lib-cadeado" data-acao="cadeado" aria-label="Bloquear a tela"><svg><use href="#i-cadeado"/></svg></button>
+                                    <button type="button" class="app-redondo" data-acao="oculos" aria-label="Câmera dos óculos" aria-pressed="false"><svg><use href="#i-olho"/></svg></button>
+                                    <button type="button" class="app-redondo" data-acao="historico" aria-label="Histórico"><svg><use href="#i-historico"/></svg></button>
+                                </div>
+
+                                <button type="button" class="lib-visor" data-acao="mao" aria-label="Tirar ou colocar a mão no quadro">
+                                    <svg class="lib-mao" viewBox="0 0 96 120" aria-hidden="true">
+                                        <path class="lib-mao-forma" d="M50 110 36 98 25 86 17 74 10 63M50 110 38 66 34 46 32 33 30 21M38 66l12-4V13M50 62l11 3 4-20 2-12 2-11M61 65l10 7 7-15 4-10 4-9M50 110l21-38"/>
+                                        <path class="lib-mao-linhas" d="M50 110 36 98 25 86 17 74 10 63M50 110 38 66 34 46 32 33 30 21M38 66l12-4V13M50 62l11 3 4-20 2-12 2-11M61 65l10 7 7-15 4-10 4-9M50 110l21-38"/>
+                                        <g class="lib-mao-pontos">
+                                            <circle cx="50" cy="110" r="2.6"/>
+                                            <circle cx="36" cy="98" r="2.6"/><circle cx="25" cy="86" r="2.6"/><circle cx="17" cy="74" r="2.6"/><circle cx="10" cy="63" r="2.6"/>
+                                            <circle cx="38" cy="66" r="2.6"/><circle cx="34" cy="46" r="2.6"/><circle cx="32" cy="33" r="2.6"/><circle cx="30" cy="21" r="2.6"/>
+                                            <circle cx="50" cy="62" r="2.6"/><circle cx="50" cy="40" r="2.6"/><circle cx="50" cy="26" r="2.6"/><circle cx="50" cy="13" r="2.6"/>
+                                            <circle cx="61" cy="65" r="2.6"/><circle cx="65" cy="45" r="2.6"/><circle cx="67" cy="33" r="2.6"/><circle cx="69" cy="22" r="2.6"/>
+                                            <circle cx="71" cy="72" r="2.6"/><circle cx="78" cy="57" r="2.6"/><circle cx="82" cy="47" r="2.6"/><circle cx="86" cy="38" r="2.6"/>
+                                        </g>
+                                    </svg>
+                                    <span class="lib-traducao"></span>
+                                </button>
+
+                                <div class="lib-aviso-linha">
+                                    <span class="lib-aviso" role="status">PRONTO - FAÇA O SINAL</span>
+                                    <button type="button" class="app-redondo" data-acao="lixeira" aria-label="Apagar"><svg><use href="#i-lixeira"/></svg></button>
+                                </div>
+
+                                <div class="lib-base">
+                                    <button type="button" class="app-redondo" data-acao="resposta" aria-label="Responder"><svg><use href="#i-balao"/></svg></button>
+                                    <button type="button" class="lib-modo" data-acao="alfabeto" aria-pressed="true">ALFABETO</button>
+                                    <button type="button" class="lib-modo" data-acao="corpo" aria-pressed="false">CORPO</button>
+                                    <button type="button" class="app-redondo" data-acao="inverter" aria-label="Trocar câmera"><svg><use href="#i-girar"/></svg></button>
+                                </div>
+
+                                <p class="lib-toast" aria-hidden="true"></p>
+                            </section>
+
+                            <!-- Tela 3: resposta -->
+                            <section class="app-tela app-resposta" data-nome="resposta" aria-label="Resposta">
+                                <div class="res-topo">
+                                    <span class="res-rotulo">RESPOSTA</span>
+                                    <button type="button" class="app-redondo" data-acao="historico" aria-label="Histórico"><svg><use href="#i-historico"/></svg></button>
+                                    <button type="button" class="app-redondo" data-acao="virar" aria-label="Virar a tela"><svg><use href="#i-virar"/></svg></button>
+                                    <button type="button" class="app-redondo" data-acao="fechar-resposta" aria-label="Fechar"><svg><use href="#i-fechar"/></svg></button>
+                                </div>
+                                <textarea class="res-texto" rows="3" placeholder="Toque para escrever, ou use FALAR" aria-label="Resposta para a pessoa surda ler"></textarea>
+                                <div class="res-base">
+                                    <button type="button" class="res-falar" data-acao="falar"><svg><use href="#i-mic"/></svg><span>FALAR</span></button>
+                                    <button type="button" class="app-pilula app-pilula--forte" data-acao="limpar">LIMPAR</button>
+                                    <button type="button" class="app-pilula app-pilula--forte" data-acao="pronto">PRONTO</button>
+                                </div>
+                            </section>
+
+                            <!-- Histórico: folha que sobe por cima da tela -->
+                            <div class="app-folha" aria-label="Histórico da conversa">
+                                <button type="button" class="folha-alca" data-acao="fechar-historico" aria-label="Fechar o histórico"></button>
+                                <div class="folha-topo"><strong>Libras</strong><span class="folha-total"></span></div>
+                                <ol class="folha-lista"></ol>
+                            </div>
+
+                            <!-- Tela bloqueada -->
+                            <button type="button" class="app-bloqueio" data-acao="desbloquear" aria-label="Deslize para desbloquear">
+                                <span class="bloq-setas" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                                <strong>VISUALL OUVINDO</strong>
+                                <span>deslize para desbloquear</span>
+                            </button>
+
+                            <div class="app-clarao" aria-hidden="true"></div>
+                            <span class="app-barra" aria-hidden="true"></span>
+                        </div>
+
+                        <!-- Explicação do último botão tocado -->
+                        <article class="x-info" aria-live="polite">
+                            <p class="x-info-rotulo">Câmera</p>
+                            <h3>Comece por aqui</h3>
+                            <p class="x-info-texto">Este celular funciona de verdade: toque em qualquer botão e ele reage como no aplicativo. A explicação de cada função aparece aqui.</p>
+                            <p class="x-info-dica">Para abrir o modo Libras, toque no botão redondo amarelo no canto de cima.</p>
+                            <img class="x-info-imagem" alt="" width="1600" height="738" hidden>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SOLUÇÃO ================= -->
+        <section class="secao" id="solucao">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">02 · O ponto de partida</p>
+                    <h2 class="secao-titulo">Uma conversa que simplesmente não acontece</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Antes de escrever uma linha de código, fomos atrás da pergunta certa.
+                    </p>
+                </div>
+
+                <div class="grade-solucao revela">
+                    <article class="cartao">
+                        <span class="cartao-numero">problema</span>
+                        <h3>O que nos fez pensar?</h3>
+                        <p>
+                            Mais de 10 milhões de brasileiros têm algum grau de deficiência
+                            auditiva, e a Libras é a língua materna de boa parte dessa comunidade.
+                            Ainda assim, a comunicação do dia a dia com quem não sinaliza
+                            continua dependendo de papel, celular digitado ou de um intérprete
+                            que quase nunca está por perto.
+                        </p>
+                    </article>
+
+                    <article class="cartao cartao--resposta">
+                        <span class="cartao-numero">solução</span>
+                        <h3>O que construímos?</h3>
+                        <p>
+                            O VisuAll nasceu de uma pergunta simples:
+                            e se a câmera que já está no bolso de todo mundo pudesse fazer essa ponte?
+                        </p>
+                        <p>
+                            A resposta é um modo Libras integrado ao app de câmera do smartphone.
+                            Ao apontar a câmera, o sistema rastreia mãos, rosto e expressões faciais
+                            em tempo real, reconhece os sinais e exibe a tradução na tela.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FUNCIONAMENTO ================= -->
+        <section class="secao" id="funcionamento">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">03 · Funcionamento</p>
+                    <h2 class="secao-titulo">Da câmera ao texto, em quatro etapas</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Todo o caminho roda no aparelho, em sequência, enquanto a pessoa sinaliza.
+                    </p>
+                </div>
+
+                <ol class="etapas revela">
+                    <li class="etapa">
+                        <h3>Captura</h3>
+                        <p>A câmera do celular registra os movimentos das mãos e do rosto.</p>
+                    </li>
+                    <li class="etapa">
+                        <h3>Rastreamento</h3>
+                        <p>
+                            O MediaPipe extrai os pontos-chave de mãos e face, incluindo marcadores
+                            não-manuais como o movimento das sobrancelhas.
+                        </p>
+                    </li>
+                    <li class="etapa">
+                        <h3>Reconhecimento</h3>
+                        <p>
+                            Modelos de machine learning (MLP e LSTM) classificam sinais estáticos
+                            e sinais em movimento.
+                        </p>
+                    </li>
+                    <li class="etapa">
+                        <h3>Tradução</h3>
+                        <p>
+                            O texto aparece na tela em tempo real, dentro da mesma interface de
+                            câmera que o usuário já conhece.
+                        </p>
+                    </li>
+                </ol>
+
+                <div class="destaque-local revela">
+                    <p>
+                        E nada disso sai do aparelho: todo o processamento é local, sem nuvem, e
+                        funciona em qualquer lugar, inclusive offline.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PÚBLICO ================= -->
+        <section class="secao" id="publico">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">04 · Público-alvo</p>
+                    <h2 class="secao-titulo">Quem usa o VisuAll</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        A barreira quase nunca está na pessoa surda: ela já se comunica com
+                        fluência. Está em quem não entende Libras, e é nesse lado que o VisuAll age.
+                    </p>
+                </div>
+
+                <div class="grade-publico revela">
+                    <article class="card-publico">
+                        <h3>Quem aponta a câmera</h3>
+                        <p>
+                            Pessoas ouvintes que não sabem Libras: estudantes, professores,
+                            atendentes, colegas e familiares. Em vez de papel ou gestos
+                            improvisados, basta abrir a câmera.
+                        </p>
+                    </article>
+
+                    <article class="card-publico">
+                        <h3>Quem se beneficia</h3>
+                        <p>
+                            Pessoas surdas e falantes de Libras ganham autonomia: comunicam-se
+                            na própria língua, e o esforço de compreensão passa para o outro
+                            lado da conversa.
+                        </p>
+                    </article>
+
+                    <article class="card-publico">
+                        <h3>Onde acontece</h3>
+                        <p>
+                            Sala de aula, balcão de atendimento, consultório, convívio cotidiano.
+                            Situações comuns em que não há intérprete disponível e a conversa
+                            simplesmente não acontece.
+                        </p>
+                    </article>
+
+                    <article class="card-publico">
+                        <h3>Por que importa</h3>
+                        <p>
+                            O recurso já vive dentro do app de câmera, e não em um aplicativo
+                            separado que ninguém lembra de baixar. Está pronto no momento em que
+                            a conversa precisa acontecer.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TECNOLOGIA ================= -->
+        <section class="secao" id="tecnologia">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">05 · Tecnologia</p>
+                    <h2 class="secao-titulo">O que roda por baixo</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Decisões técnicas tomadas para caber em um celular comum, sem servidor
+                        e sem latência de rede.
+                    </p>
+                </div>
+
+                <dl class="grade-tecnologia revela">
+                    <div class="item-tecnologia">
+                        <dt>MediaPipe</dt>
+                        <dd>
+                            Extração dos pontos-chave de mãos e face, incluindo marcadores
+                            não-manuais da Libras.
+                        </dd>
+                    </div>
+                    <div class="item-tecnologia">
+                        <dt>MLP</dt>
+                        <dd>
+                            Classificação de sinais estáticos, a partir da configuração das mãos
+                            em um único quadro.
+                        </dd>
+                    </div>
+                    <div class="item-tecnologia">
+                        <dt>LSTM</dt>
+                        <dd>
+                            Reconhecimento de sinais em movimento, considerando a sequência
+                            temporal dos quadros.
+                        </dd>
+                    </div>
+                    <div class="item-tecnologia">
+                        <dt>Execução no aparelho</dt>
+                        <dd>
+                            Inferência local no Android, sem nuvem: nenhuma imagem do usuário
+                            é enviada para fora do celular.
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <!-- ================= GALERIA ================= -->
+        <section class="secao" id="galeria">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">06 · Demonstração</p>
+                    <h2 class="secao-titulo">Demonstração</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Conheça o projeto e veja a proposta do VisuAll em ação.
+                    </p>
+                </div>
+
+                <div class="grade-galeria revela">
+                    <figure class="galeria-video">
+                        <h3 class="galeria-video-titulo">Vídeo pitch</h3>
+                        <div class="moldura moldura--video">
+                            <a class="video-capa" href="https://www.youtube.com/watch?v=OTPf8B4C49Y" target="_blank" rel="noopener" data-video="OTPf8B4C49Y">
+                                <img src="../images/video-capa.jpg" alt="" width="1280" height="720" loading="lazy">
+                                <span class="video-play" aria-hidden="true"></span>
+                                <span class="so-leitor">Assistir à demonstração do aplicativo VisuAll</span>
+                            </a>
+                        </div>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= EQUIPE ================= -->
+        <section class="secao" id="equipe">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">07 · Equipe</p>
+                    <h2 class="secao-titulo">Quem construiu o VisuAll</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Cinco estudantes de Engenharia de Software da FIAP.
+                    </p>
+                </div>
+
+                <div class="grade-equipe revela" role="region" aria-label="Integrantes da equipe" tabindex="0">
+                    <article class="integrante">
+                        <img src="../images/team/joao.jpeg" alt="João Victor Pereira Gimenes"
+                             class="integrante-foto" width="88" height="88" loading="lazy">
+                        <h3>João Victor Pereira Gimenes</h3>
+                        <a class="link-perfil" target="_blank" rel="noopener"
+                           href="https://www.linkedin.com/in/jo%C3%A3o-victor-pereira-gimenes-191615374/">
+                            LinkedIn <span aria-hidden="true">↗</span>
+                        </a>
+                    </article>
+
+                    <article class="integrante">
+                        <img src="../images/team/rafael.jpeg" alt="Rafael Boletini de Oliveira"
+                             class="integrante-foto" width="88" height="88" loading="lazy">
+                        <h3>Rafael Boletini de Oliveira</h3>
+                        <a class="link-perfil" target="_blank" rel="noopener"
+                           href="https://www.linkedin.com/in/rafael-boletini-de-oliveira-24b782275/">
+                            LinkedIn <span aria-hidden="true">↗</span>
+                        </a>
+                    </article>
+
+                    <article class="integrante">
+                        <img src="../images/team/juan.jpeg" alt="Juan Duarte Moura"
+                             class="integrante-foto" width="88" height="88" loading="lazy">
+                        <h3>Juan Duarte Moura</h3>
+                        <a class="link-perfil" target="_blank" rel="noopener"
+                           href="https://www.linkedin.com/in/juan-duarte-moura/">
+                            LinkedIn <span aria-hidden="true">↗</span>
+                        </a>
+                    </article>
+
+                    <article class="integrante">
+                        <img src="../images/team/victor.jpg" alt="Victor Rossi Sales Zanandré"
+                             class="integrante-foto" width="88" height="88" loading="lazy">
+                        <h3>Victor Rossi Sales Zanandré</h3>
+                        <a class="link-perfil" target="_blank" rel="noopener"
+                           href="https://www.linkedin.com/in/victor-zanandre/">
+                            LinkedIn <span aria-hidden="true">↗</span>
+                        </a>
+                    </article>
+
+                    <article class="integrante">
+                        <img src="../images/team/julio.jpeg" alt="Julio Cesar da Silva Cocco"
+                             class="integrante-foto" width="88" height="88" loading="lazy">
+                        <h3>Julio Cesar da Silva Cocco</h3>
+                        <a class="link-perfil" target="_blank" rel="noopener"
+                           href="https://www.linkedin.com/in/julio-cesar-da-silva-cocco-085400338/">
+                            LinkedIn <span aria-hidden="true">↗</span>
+                        </a>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= CONTATO ================= -->
+        <section class="secao" id="contato">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">08 · Contato</p>
+                    <h2 class="secao-titulo">Fale com a equipe</h2>
+                    <img src="../images/logo-marca.webp" alt="" class="secao-objeto" width="840" height="500" loading="lazy" aria-hidden="true">
+                    <p class="secao-lead">
+                        Escreva para a gente ou siga os nossos canais.
+                    </p>
+                </div>
+
+                <address class="grade-contato revela">
+                    <ul class="contato-canais">
+                        <li>
+                            <a class="canal" href="mailto:visuall2k26@gmail.com">
+                                <span class="canal-nome">E-mail</span>
+                                <span class="canal-valor">visuall2k26@gmail.com</span>
+                                <span class="canal-seta" aria-hidden="true">↗</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="canal" href="https://www.instagram.com/visuall2k26?stkn=ZHBudTkzZTJzZ3Jp" target="_blank" rel="noopener">
+                                <span class="canal-nome">Instagram</span>
+                                <span class="canal-valor">@visuall2k26</span>
+                                <span class="canal-seta" aria-hidden="true">↗</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="canal" href="https://www.youtube.com/@VisuAll2K26" target="_blank" rel="noopener">
+                                <span class="canal-nome">YouTube</span>
+                                <span class="canal-valor">@VisuAll2K26</span>
+                                <span class="canal-seta" aria-hidden="true">↗</span>
+                            </a>
+                        </li>
+                    </ul>
+                </address>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="rodape">
+        <div class="rodape-grade">
+            <div class="rodape-marca">
+                <a href="#inicio" aria-label="VisuAll, voltar ao início">
+                    <img src="../images/logo-completa.webp" alt="VisuAll" class="rodape-logo" width="480" height="440" loading="lazy">
+                </a>
+                <p>
+                    Reconhecimento de Libras em tempo real dentro do aplicativo de câmera
+                    do smartphone. Projeto acadêmico desenvolvido por estudantes de
+                    Engenharia de Software da FIAP.
+                </p>
+            </div>
+
+            <nav class="rodape-coluna" aria-labelledby="rodape-projeto">
+                <h2 id="rodape-projeto">Projeto</h2>
+                <ul>
+                    <li><a href="#explorar">Explore o app</a></li>
+                    <li><a href="#solucao">Solução</a></li>
+                    <li><a href="#funcionamento">Funcionamento</a></li>
+                    <li><a href="#publico">Público-alvo</a></li>
+                    <li><a href="#tecnologia">Tecnologia</a></li>
+                </ul>
+            </nav>
+
+            <nav class="rodape-coluna" aria-labelledby="rodape-equipe">
+                <h2 id="rodape-equipe">Equipe</h2>
+                <ul>
+                    <li><a href="#equipe">Integrantes</a></li>
+                    <li><a href="#galeria">Demonstração</a></li>
+                    <li><a href="https://www.youtube.com/@VisuAll2K26" target="_blank" rel="noopener">YouTube</a></li>
+                    <li><a href="#contato">Contato</a></li>
+                    <li><a href="mailto:visuall2k26@gmail.com">visuall2k26@gmail.com</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="rodape-base">
+            <p>VisuAll © 2026</p>
+            <p>FIAP · Engenharia de Software</p>
+        </div>
+    </footer>
+
+    <!-- Scripts de enfeite e interação. Sem eles o site continua navegável. -->
+    <script src="../js/constelacao.js?v=15" defer></script>
+    <script src="../js/explorador.js?v=15" defer></script>
+    <script src="../js/carrossel.js?v=15" defer></script>
+    <script src="../js/video.js?v=15" defer></script>
+</body>
+</html>

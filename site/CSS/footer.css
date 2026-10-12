@@ -1,0 +1,116 @@
+/* ==========================================================================
+   Rodapé
+   ========================================================================== */
+
+.rodape{
+    width: min(100% - 2 * var(--margem-pagina), var(--page-max-width));
+    margin-inline: auto;
+    padding: var(--spacing-96) 0 var(--spacing-36);
+}
+
+.rodape-grade{
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-60) var(--spacing-36);
+    padding-bottom: var(--spacing-60);
+    border-bottom: 1px solid var(--color-linha);
+}
+
+/* Bloco da marca: aqui a logo aparece completa, com o nome ---------------- */
+
+.rodape-logo{
+    width: 150px;
+    height: auto;
+    transition: scale var(--t-media);
+}
+
+.rodape-marca a:hover .rodape-logo{
+    scale: 1.05;
+}
+
+.rodape-marca p{
+    max-width: 40ch;
+    margin-top: var(--spacing-12);
+    color: var(--color-prata);
+}
+
+/* Colunas de links -------------------------------------------------------- */
+
+.rodape-coluna h2{
+    margin-bottom: var(--spacing-24);
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-amarelo);
+}
+
+.rodape-coluna ul{
+    display: grid;
+    justify-items: start;
+    gap: var(--spacing-12);
+}
+
+.rodape-coluna a{
+    color: var(--color-prata);
+    overflow-wrap: anywhere;
+    transition: color var(--t-rapida);
+}
+
+.rodape-coluna a:hover{
+    color: var(--color-amarelo);
+}
+
+/* Linha final ------------------------------------------------------------- */
+
+.rodape-base{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--spacing-12);
+    margin-top: var(--spacing-24);
+}
+
+.rodape-base p{
+    font-size: var(--text-caption);
+    line-height: var(--leading-caption);
+    color: var(--color-cinza);
+}
+
+@media (max-width: 760px){
+    .rodape{
+        padding-top: var(--spacing-60);
+    }
+
+    .rodape-grade{
+        grid-template-columns: 1fr 1fr;
+        row-gap: var(--spacing-36);
+    }
+
+    .rodape-marca{
+        grid-column: 1 / -1;
+    }
+
+    .rodape-base{
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 560px){
+    /* colunas estreitas: letra um pouco menor, e o e-mail, que é longo,
+       fica na coluna mais larga e não quebra */
+    .rodape-grade{
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        column-gap: var(--spacing-18);
+    }
+
+    .rodape-coluna a{
+        font-size: 16px;
+    }
+
+    .rodape-coluna a[href^="mailto:"]{
+        font-size: 14px;
+        white-space: nowrap;
+    }
+}

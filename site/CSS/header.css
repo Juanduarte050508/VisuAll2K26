@@ -1,0 +1,311 @@
+/* ==========================================================================
+   Cabeçalho — barra institucional de largura total: marca grande à esquerda,
+   navegação em caixa alta e ação principal à direita.
+   (menu móvel sem JavaScript)
+   ========================================================================== */
+
+.cabecalho{
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: var(--spacing-36);
+    min-height: var(--altura-header);
+    padding: 0 max(var(--spacing-36), calc((100% - 1440px) / 2));
+    border-bottom: 1px solid var(--color-linha);
+    background-color: rgba(0, 0, 0, 0.86);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+}
+
+/* --- Marca: o olho da logo + o nome -------------------------------------- */
+
+.marca{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-18);
+    align-self: stretch;
+}
+
+.marca-logo{
+    width: auto;
+    height: 46px;
+    transition: scale var(--t-media);
+}
+
+.marca:hover .marca-logo{
+    scale: 1.08;
+}
+
+.marca-nome{
+    font-size: 32px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--color-amarelo);
+}
+
+/* --- Navegação ----------------------------------------------------------- */
+
+.navegacao{
+    align-self: stretch;
+}
+
+.navegacao ul{
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-36);
+    height: 100%;
+}
+
+.navegacao li{
+    display: flex;
+}
+
+/* Cada link ocupa a altura toda da barra; um fio amarelo cresce na base */
+.navegacao a{
+    position: relative;
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--color-branco);
+    transition: color var(--t-rapida);
+}
+
+.navegacao a::after{
+    content: '';
+    position: absolute;
+    inset: auto 0 -1px 0;
+    height: 3px;
+    background-color: var(--color-amarelo);
+    scale: 0 1;
+    transform-origin: left;
+    transition: scale 0.4s var(--mola);
+}
+
+.navegacao a:hover,
+.navegacao a:focus-visible{
+    color: var(--color-amarelo);
+}
+
+.navegacao a:hover::after,
+.navegacao a:focus-visible::after{
+    scale: 1 1;
+}
+
+/* --- Ação principal: a única pílula cheia do cabeçalho ------------------- */
+
+.cabecalho-cta{
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-12);
+    padding: var(--spacing-18) var(--spacing-30);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-amarelo);
+    color: var(--color-preto);
+    font-size: 15px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background-color var(--t-rapida);
+}
+
+.cabecalho-cta::after{
+    content: '→' / '';
+    transition: translate var(--t-rapida);
+}
+
+.cabecalho-cta:hover{
+    background-color: var(--color-branco);
+}
+
+.cabecalho-cta:hover::after{
+    translate: 4px 0;
+}
+
+/* --- Botão hambúrguer (oculto no desktop) -------------------------------- */
+
+.menu-botao{
+    display: none;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: border-color var(--t-rapida);
+}
+
+.menu-botao:hover{
+    border-color: var(--color-amarelo);
+}
+
+.menu-botao span,
+.menu-botao span::before,
+.menu-botao span::after{
+    content: '';
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+    background-color: var(--color-branco);
+    transition: transform var(--t-media), opacity var(--t-rapida);
+}
+
+.menu-botao span::before{ transform: translateY(-7px); }
+.menu-botao span::after{  transform: translateY(5px);  }
+
+.menu-check:focus-visible + .menu-botao{
+    outline: 2px solid var(--color-amarelo);
+    outline-offset: 3px;
+}
+
+/* Estado aberto: vira um "X" */
+.menu-check:checked + .menu-botao span{
+    background-color: transparent;
+}
+
+.menu-check:checked + .menu-botao span::before{
+    transform: translateY(0) rotate(45deg);
+}
+
+.menu-check:checked + .menu-botao span::after{
+    transform: translateY(-2px) rotate(-45deg);
+}
+
+/* ==========================================================================
+   Telas médias — aperta os espaços antes de virar gaveta
+   ========================================================================== */
+
+@media (max-width: 1360px){
+    .cabecalho{
+        column-gap: var(--spacing-24);
+    }
+
+    .navegacao ul{
+        gap: var(--spacing-24);
+    }
+
+    .navegacao a{
+        font-size: var(--text-label);
+        letter-spacing: 0.04em;
+    }
+
+    .cabecalho-cta{
+        padding-inline: var(--spacing-24);
+        font-size: var(--text-label);
+    }
+}
+
+/* ==========================================================================
+   Versão móvel — a barra se abre em gaveta
+   ========================================================================== */
+
+@media (max-width: 1160px){
+    .cabecalho{
+        grid-template-columns: 1fr auto;
+        padding-inline: var(--margem-pagina);
+    }
+
+    .marca{
+        min-height: var(--altura-header);
+    }
+
+    .marca-logo{
+        height: 36px;
+    }
+
+    .marca-nome{
+        font-size: 26px;
+    }
+
+    .menu-botao{
+        display: grid;
+        order: 2;
+    }
+
+    .navegacao{
+        order: 3;
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        transition: grid-template-rows var(--t-media);
+    }
+
+    .menu-check:checked ~ .navegacao{
+        grid-template-rows: 1fr;
+    }
+
+    .navegacao ul{
+        flex-direction: column;
+        gap: 0;
+        height: auto;
+        min-height: 0;
+    }
+
+    .navegacao li:last-child{
+        margin-bottom: var(--spacing-18);
+    }
+
+    .navegacao li{
+        border-top: 1px solid var(--color-linha);
+    }
+
+    .navegacao a{
+        flex: 1;
+        padding-block: var(--spacing-24);
+        font-size: var(--text-body);
+    }
+
+    .navegacao a::after{
+        display: none;
+    }
+
+    .cabecalho-cta{
+        display: none;
+    }
+}
+
+/* Navegadores sem suporte a transição de grid continuam funcionais:
+   a gaveta simplesmente abre e fecha sem animação. */
+@supports not (grid-template-rows: 0fr){
+    @media (max-width: 1160px){
+        .navegacao{ display: none; }
+        .menu-check:checked ~ .navegacao{ display: block; }
+    }
+}
+
+/* ==========================================================================
+   Progresso de leitura — fio amarelo no topo da janela (sem JavaScript)
+   ========================================================================== */
+
+@keyframes progresso{
+    from{ transform: scaleX(0); }
+    to{   transform: scaleX(1); }
+}
+
+@supports (animation-timeline: scroll()){
+    @media (prefers-reduced-motion: no-preference){
+        body::before{
+            content: '';
+            position: fixed;
+            inset: 0 0 auto 0;
+            z-index: 120;
+            height: 3px;
+            background-color: var(--color-amarelo);
+            transform-origin: left;
+            animation: progresso linear both;
+            animation-timeline: scroll(root);
+        }
+    }
+}

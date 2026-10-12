@@ -1,0 +1,935 @@
+/* ==========================================================================
+   Simulador do app VisuAll
+   A interface do aplicativo refeita em HTML e CSS, para o visitante usar de
+   verdade. Todas as medidas internas usam cqw (1cqw = 1% da largura do
+   aparelho), então o celular inteiro escala junto com --w.
+   Os estados (tela, modo, flash...) são atributos data-* postos na raiz
+   .app por js/explorador.js.
+   ========================================================================== */
+
+.app{
+    --ouro: #e8a31f;
+    --contorno: #f2c14e;
+    --vermelho: #ff6b5e;
+    --fundo-botao: #101010;
+    --fio: max(1px, 0.45cqw);
+
+    container-type: size;
+    position: relative;
+    flex: none;
+    width: var(--w);
+    height: calc(var(--w) * 1600 / 738);
+    overflow: hidden;
+    border-radius: 30px;
+    outline: 1px solid var(--color-dourado);
+    background-color: #000;
+    font-family: 'Roboto', var(--font-principal);
+    font-weight: 400;
+    line-height: 1.2;
+    color: #fff;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* :where() zera a especificidade deste reset: qualquer classe de botão abaixo
+   o sobrescreve sem precisar de !important */
+:where(.app) button{
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: scale 0.12s ease-out, background-color 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+/* Resposta ao toque: o botão afunda de leve */
+.app button:active{
+    scale: 0.92;
+}
+
+.app :focus-visible{
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.app svg{
+    display: block;
+    width: 1em;
+    height: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.app-icones{
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Peças comuns
+   -------------------------------------------------------------------------- */
+
+.app-status{
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5cqw 4.4cqw 0;
+    font-size: 3.4cqw;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.app-bateria{
+    padding: 0.2cqw 1.8cqw;
+    border-radius: 99px;
+    background-color: #d9d9d9;
+    font-size: 2.7cqw;
+    color: #000;
+}
+
+/* Barra de gestos do Android, no pé da tela */
+.app-barra{
+    position: absolute;
+    left: 50%;
+    bottom: 1.7cqw;
+    z-index: 10;
+    width: 35cqw;
+    height: 0.9cqw;
+    translate: -50% 0;
+    border-radius: 99px;
+    background-color: #8a8a8a;
+    pointer-events: none;
+}
+
+@keyframes app-entrar{
+    from{
+        opacity: 0;
+        scale: 0.97;
+    }
+    to{
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+/* Só a tela ativa aparece */
+.app-tela{
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding-top: 12cqw;
+    transition: opacity 0.3s;
+}
+
+.app[data-tela="camera"] .app-camera,
+.app[data-tela="libras"] .app-libras,
+.app[data-tela="resposta"] .app-resposta{
+    display: flex;
+    animation: app-entrar 0.28s ease-out;
+}
+
+/* Botão redondo de contorno dourado, o mais comum do app */
+.app-redondo{
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 13.2cqw;
+    height: 13.2cqw;
+    border: var(--fio) solid var(--contorno);
+    border-radius: 50%;
+    background-color: var(--fundo-botao);
+    font-size: 6cqw;
+}
+
+.app-redondo--forte{
+    width: 12.4cqw;
+    height: 12.4cqw;
+    border-width: max(2px, 0.6cqw);
+    background-color: #000;
+}
+
+.app-redondo[aria-pressed="true"]{
+    background-color: var(--ouro);
+    color: #2a1d00;
+}
+
+.app-pilula{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 7cqw;
+    padding: 0 3.3cqw;
+    border: max(1px, 0.25cqw) solid #5a4a1e;
+    border-radius: 99px;
+    background-color: var(--fundo-botao);
+    font-size: 3.3cqw;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.app-pilula svg{
+    font-size: 4cqw;
+}
+
+.app-pilula--forte{
+    height: 9.2cqw;
+    border: var(--fio) solid var(--contorno);
+    font-size: 2.9cqw;
+}
+
+.app-pilula[aria-pressed="true"]{
+    border-color: var(--contorno);
+    color: var(--ouro);
+}
+
+/* Convite inicial: o botão que abre o modo Libras pulsa até o primeiro toque */
+@keyframes app-convite{
+    from{ box-shadow: 0 0 0 0 rgba(242, 193, 78, 0.7); }
+    to{   box-shadow: 0 0 0 5cqw rgba(242, 193, 78, 0); }
+}
+
+.app:not(.tocado) .app-convite{
+    animation: app-convite 1.6s ease-out infinite;
+}
+
+/* Clarão do disparo */
+@keyframes app-clarao{
+    from{ opacity: 0.9; }
+    to{   opacity: 0; }
+}
+
+.app-clarao{
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    background-color: #fff;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app.disparando .app-clarao{
+    animation: app-clarao 0.45s ease-out;
+}
+
+/* Troca de câmera: a imagem gira sobre o próprio eixo */
+@keyframes app-virar{
+    50%{
+        transform: rotateY(90deg);
+        opacity: 0.15;
+    }
+}
+
+.app.virando .cam-cena,
+.app.virando .lib-mao{
+    animation: app-virar 0.5s ease-in-out;
+}
+
+/* --------------------------------------------------------------------------
+   Tela 1: câmera
+   -------------------------------------------------------------------------- */
+
+.cam-topo{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.6cqw 5.6cqw 2.8cqw 8.4cqw;
+}
+
+.cam-flash{
+    position: relative;
+    display: block;
+    width: 8cqw;
+    font-size: 6cqw;
+}
+
+.cam-flash b{
+    position: absolute;
+    right: 0;
+    bottom: -1.2cqw;
+    font-size: 2.6cqw;
+    font-weight: 700;
+}
+
+.cam-flash[data-modo="off"]{
+    opacity: 0.4;
+}
+
+.cam-flash[data-modo="on"]{
+    color: var(--ouro);
+}
+
+.cam-pilulas{
+    display: flex;
+    gap: 2.2cqw;
+}
+
+/* Área do visor: em 4:3 a imagem ocupa parte dela, em 16:9 ocupa tudo */
+.cam-area{
+    display: grid;
+    flex: 1;
+    align-items: center;
+    min-height: 0;
+}
+
+.cam-visor{
+    position: relative;
+    width: 100%;
+    height: 88%;
+    overflow: hidden;
+    border: max(1px, 0.2cqw) solid #4a3b16;
+    border-radius: 5cqw;
+    background: radial-gradient(circle at 50% 45%, #17140c, #050505 70%);
+    transition: height 0.35s var(--mola);
+}
+
+.app[data-formato="16:9"] .cam-visor{
+    height: 100%;
+}
+
+/* O que a câmera "vê": a logo, para o zoom e a troca de câmera terem efeito */
+.cam-cena{
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 46%;
+    height: auto;
+    translate: -50% -50%;
+    scale: var(--zoom, 1);
+    opacity: 0.9;
+    transition: scale 0.45s var(--mola);
+}
+
+/* Grade em terços */
+.app[data-grade] .cam-visor::after{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to right, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.5) calc(33.33% - 0.5px) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.5) calc(66.66% - 0.5px) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+        linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.5) calc(33.33% - 0.5px) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.5) calc(66.66% - 0.5px) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
+    pointer-events: none;
+}
+
+.cam-etiqueta{
+    position: absolute;
+    left: 3cqw;
+    top: 3cqw;
+    padding: 0.8cqw 2cqw;
+    border: max(1px, 0.25cqw) solid var(--ouro);
+    border-radius: 1.6cqw;
+    font-size: 2.7cqw;
+    font-weight: 700;
+    color: var(--ouro);
+}
+
+.app[data-gravando] .cam-etiqueta{
+    border-color: var(--vermelho);
+    color: var(--vermelho);
+}
+
+.cam-contagem{
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 30cqw;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.cam-zoom{
+    position: absolute;
+    left: 50%;
+    bottom: 4cqw;
+    display: flex;
+    gap: 1cqw;
+    padding: 1cqw;
+    translate: -50% 0;
+    border-radius: 99px;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.cam-zoom > *{
+    display: grid;
+    place-items: center;
+    min-width: 11.5cqw;
+    height: 8.2cqw;
+    border: max(1px, 0.3cqw) solid transparent;
+    border-radius: 99px;
+    font-size: 3.3cqw;
+}
+
+.cam-zoom > [aria-pressed="true"],
+.cam-zoom > .ativo{
+    border-color: var(--ouro);
+    background-color: #1c170b;
+    color: var(--ouro);
+}
+
+.cam-modos{
+    display: flex;
+    justify-content: center;
+    gap: 9cqw;
+    padding: 4.4cqw 0 3.4cqw;
+    font-size: 3.2cqw;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #8a8a8a;
+}
+
+.cam-modos > [aria-pressed="true"],
+.cam-modos > .ativo{
+    color: var(--ouro);
+}
+
+.cam-base{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9cqw;
+    padding: 1cqw 0 12.5cqw;
+}
+
+.cam-base .app-redondo{
+    width: 14.6cqw;
+    height: 14.6cqw;
+    font-size: 6.6cqw;
+}
+
+.cam-galeria{
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 14.6cqw;
+    height: 14.6cqw;
+    border: max(2px, 0.6cqw) solid var(--contorno);
+    border-radius: 3.4cqw;
+    background-color: #f3efe6;
+    font-size: 8.5cqw;
+    color: #111;
+}
+
+/* Contador de fotos tiradas nesta visita */
+.cam-galeria b{
+    position: absolute;
+    top: -2.4cqw;
+    right: -2.4cqw;
+    display: grid;
+    place-items: center;
+    min-width: 5.8cqw;
+    height: 5.8cqw;
+    border-radius: 99px;
+    background-color: var(--ouro);
+    font-size: 3cqw;
+    font-weight: 700;
+    color: #000;
+}
+
+.cam-galeria b:empty{
+    display: none;
+}
+
+.cam-disparo{
+    display: block;
+    width: 20cqw;
+    height: 20cqw;
+    border: max(3px, 1cqw) solid var(--contorno);
+    border-radius: 50%;
+    background-color: #f3efe6;
+    box-shadow: inset 0 0 0 0.8cqw #000;
+}
+
+.app[data-captura="video"] .cam-disparo{
+    background-color: var(--vermelho);
+}
+
+.app[data-gravando] .cam-disparo{
+    box-shadow: inset 0 0 0 5cqw #000;
+}
+
+/* --------------------------------------------------------------------------
+   Tela 2: modo Libras (alfabeto, corpo e óculos)
+   -------------------------------------------------------------------------- */
+
+.lib-topo{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5cqw;
+    padding: 10.5cqw 3.4cqw 0;
+}
+
+.lib-titulo{
+    flex: 1;
+    font-size: 3.5cqw;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--ouro);
+}
+
+/* Com os óculos, o cadeado ocupa o lugar do título */
+.lib-cadeado{
+    display: none;
+}
+
+.app[data-oculos] .lib-cadeado{
+    display: grid;
+}
+
+.app[data-oculos] .lib-titulo{
+    display: none;
+}
+
+/* Visor: toque nele para tirar ou devolver a mão ao quadro */
+.lib-visor{
+    --quadro: var(--ouro);
+    position: relative;
+    display: grid;
+    flex: 1;
+    place-items: center;
+    width: 100%;
+    min-height: 0;
+    margin-top: 9cqw;
+    overflow: hidden;
+    border: var(--fio) solid var(--quadro);
+    border-radius: 5cqw;
+    background: radial-gradient(circle at 50% 45%, #0e0e0e, #030303 75%);
+    cursor: pointer;
+}
+
+.app .lib-visor:active{
+    scale: 1;
+}
+
+/* Abertura no alto do quadro, como no app */
+.lib-visor::before{
+    content: '';
+    position: absolute;
+    top: -1cqw;
+    left: 24%;
+    width: 52%;
+    height: 2.4cqw;
+    background-color: #000;
+}
+
+.app[data-mao="fora"] .lib-visor{
+    --quadro: var(--vermelho);
+}
+
+@keyframes lib-acenar{
+    0%, 100%{ rotate: -6deg; }
+    50%{      rotate: 6deg; }
+}
+
+/* .app na frente: precisa vencer o tamanho padrão dos ícones (.app svg) */
+.app .lib-mao{
+    width: 50%;
+    height: auto;
+    overflow: visible;
+    transform-origin: 50% 92%;
+    animation: lib-acenar 3.2s ease-in-out infinite;
+    transition: translate 0.5s var(--mola), opacity 0.3s;
+}
+
+.app[data-mao="fora"] .lib-mao{
+    translate: 92% 24%;
+    opacity: 0.45;
+}
+
+.app[data-oculos] .lib-mao{
+    opacity: 0;
+}
+
+/* A mão em si: o mesmo traçado do esqueleto, grosso e cinza */
+.lib-mao-forma{
+    stroke: #2c2c2c;
+    stroke-width: 13;
+}
+
+/* Os pontos e linhas do MediaPipe só aparecem com LINHAS: ON */
+.lib-mao-linhas,
+.lib-mao-pontos{
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.lib-mao-linhas{
+    stroke: var(--ouro);
+    stroke-width: 1.8;
+}
+
+.lib-mao-pontos circle{
+    fill: #8ab4f8;
+    stroke: none;
+}
+
+.app[data-linhas] .lib-mao-linhas,
+.app[data-linhas] .lib-mao-pontos{
+    opacity: 1;
+}
+
+/* Texto reconhecido */
+.lib-traducao{
+    position: absolute;
+    top: 5cqw;
+    left: 6%;
+    right: 6%;
+    padding: 2.6cqw 3cqw;
+    border: max(1px, 0.25cqw) solid #3a3a3a;
+    border-radius: 4cqw;
+    background-color: rgba(16, 16, 16, 0.92);
+    font-size: 4.6cqw;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.lib-traducao:empty{
+    display: none;
+}
+
+.lib-aviso-linha{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4cqw;
+    margin-top: -7cqw;
+}
+
+.lib-aviso{
+    display: inline-flex;
+    align-items: center;
+    height: 10.6cqw;
+    padding: 0 4.4cqw;
+    border: var(--fio) solid var(--ouro);
+    border-radius: 99px;
+    background-color: var(--fundo-botao);
+    font-size: 3.1cqw;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--ouro);
+}
+
+.app[data-mao="fora"] .lib-aviso{
+    color: var(--vermelho);
+}
+
+.app[data-oculos] .lib-aviso{
+    color: #fff;
+}
+
+.lib-base{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.6cqw;
+    padding: 1.2cqw 3.4cqw 19cqw;
+}
+
+.lib-modo{
+    flex: 1;
+    height: 13.2cqw;
+    border: var(--fio) solid var(--contorno);
+    border-radius: 5cqw;
+    background-color: var(--fundo-botao);
+    font-size: 3.5cqw;
+    font-weight: 700;
+}
+
+.lib-modo[aria-pressed="true"]{
+    border-color: var(--ouro);
+    background-color: var(--ouro);
+    color: #2a1d00;
+}
+
+/* Aviso rápido de troca de modo */
+.lib-toast{
+    position: absolute;
+    left: 50%;
+    bottom: 33cqw;
+    z-index: 3;
+    padding: 2.6cqw 5cqw;
+    translate: -50% 0;
+    border-radius: 99px;
+    background-color: #353535;
+    font-size: 3.6cqw;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+.lib-toast.visivel{
+    opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Tela 3: resposta
+   -------------------------------------------------------------------------- */
+
+.res-topo{
+    display: flex;
+    align-items: center;
+    gap: 3.4cqw;
+    padding: 11cqw 4.5cqw 0 6.6cqw;
+}
+
+.res-rotulo{
+    margin-right: auto;
+    font-size: 3.1cqw;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--ouro);
+}
+
+.res-texto{
+    flex: 1;
+    min-height: 0;
+    margin: 4cqw 6cqw;
+    padding: 42cqw 0 0;
+    border: 0;
+    resize: none;
+    background: transparent;
+    font: 700 8.6cqw/1.25 'Roboto', var(--font-principal);
+    text-align: center;
+    color: #fff;
+    caret-color: #2dd4bf;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.res-texto::placeholder{
+    color: #8a8a8a;
+}
+
+.app .res-texto:focus-visible{
+    outline: none;
+}
+
+.res-base{
+    display: flex;
+    gap: 3.4cqw;
+    padding: 2cqw 5.5cqw 14cqw;
+}
+
+.res-falar{
+    display: flex;
+    flex: 1.35;
+    align-items: center;
+    justify-content: center;
+    gap: 3cqw;
+    height: 13.6cqw;
+    border: var(--fio) solid var(--contorno);
+    border-radius: 5cqw;
+    background-color: var(--ouro);
+    font-size: 3.4cqw;
+    font-weight: 700;
+    color: #2a1d00;
+}
+
+.res-falar svg{
+    font-size: 6cqw;
+}
+
+@keyframes res-ouvir{
+    50%{ opacity: 0.55; }
+}
+
+.app[data-ouvindo] .res-falar{
+    animation: res-ouvir 0.8s ease-in-out infinite;
+}
+
+.res-base .app-pilula--forte{
+    flex: 1;
+    height: 13.6cqw;
+    border-radius: 5cqw;
+    font-size: 3.4cqw;
+}
+
+/* --------------------------------------------------------------------------
+   Histórico: folha que sobe sobre a tela
+   Fechada, ela fica abaixo da borda do aparelho (que corta o que sobra) e o
+   script a marca como inerte, para não receber foco nem leitor de tela.
+   -------------------------------------------------------------------------- */
+
+.app-folha{
+    position: absolute;
+    inset: 30% 0 0 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    padding: 0 6cqw 6cqw;
+    translate: 0 105%;
+    border-radius: 6cqw 6cqw 0 0;
+    background-color: #1c1c1c;
+    transition: translate 0.4s var(--mola);
+}
+
+.app[data-historico] .app-folha{
+    translate: 0 0;
+}
+
+.app[data-historico] .app-tela{
+    opacity: 0.4;
+}
+
+/* Alça: tocar nela fecha o histórico */
+.folha-alca{
+    position: relative;
+    align-self: center;
+    width: 30cqw;
+    height: 8cqw;
+}
+
+.folha-alca::before{
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 11cqw;
+    height: 0.9cqw;
+    translate: -50% -50%;
+    border-radius: 99px;
+    background-color: #5a5a5a;
+}
+
+.folha-topo{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 4cqw;
+}
+
+.folha-topo strong{
+    font-size: 5cqw;
+    font-weight: 700;
+}
+
+.folha-topo span{
+    font-size: 3.2cqw;
+    color: #9a9a9a;
+}
+
+.folha-lista{
+    display: grid;
+    flex: 1;
+    align-content: start;
+    gap: 3.6cqw;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.folha-lista::-webkit-scrollbar{
+    display: none;
+}
+
+.folha-lista time{
+    display: block;
+    margin-bottom: 1.5cqw;
+    font-size: 2.9cqw;
+    color: #9a9a9a;
+}
+
+.folha-lista p{
+    display: inline-block;
+    padding: 3cqw 4.4cqw;
+    border: max(1px, 0.25cqw) solid #3a3a3a;
+    border-radius: 4cqw;
+    background-color: #111;
+    font-size: 4cqw;
+    line-height: 1.3;
+}
+
+/* Respostas de quem ouve ganham o contorno dourado */
+.folha-lista li[data-tipo="resposta"] p{
+    border-color: var(--ouro);
+}
+
+/* --------------------------------------------------------------------------
+   Tela bloqueada
+   -------------------------------------------------------------------------- */
+
+.app-bloqueio{
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3cqw;
+    width: 100%;
+    padding-bottom: 38cqw;
+    background-color: #000;
+    color: #777;
+}
+
+.app[data-bloqueado] .app-bloqueio{
+    display: flex;
+}
+
+.app .app-bloqueio:active{
+    scale: 1;
+}
+
+.app-bloqueio strong{
+    font-size: 3.3cqw;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.app-bloqueio > span:last-child{
+    font-size: 3.3cqw;
+    color: #4a4a4a;
+}
+
+@keyframes bloq-subir{
+    0%, 100%{ border-color: #1c1c1c; }
+    50%{      border-color: #8a8a8a; }
+}
+
+/* Setas apontando para cima, acendendo em sequência de baixo para cima */
+.bloq-setas{
+    display: grid;
+    justify-items: center;
+    margin-bottom: 9cqw;
+}
+
+.bloq-setas i{
+    display: block;
+    width: 22cqw;
+    height: 22cqw;
+    margin-bottom: -12cqw;
+    border-top: 0.7cqw solid #1c1c1c;
+    border-left: 0.7cqw solid #1c1c1c;
+    rotate: 45deg;
+    animation: bloq-subir 1.6s ease-in-out infinite;
+}
+
+.bloq-setas i:nth-child(1){ animation-delay: 0.45s; }
+.bloq-setas i:nth-child(2){ animation-delay: 0.3s; }
+.bloq-setas i:nth-child(3){ animation-delay: 0.15s; }
+
+@keyframes bloq-sair{
+    to{
+        translate: 0 -100%;
+        opacity: 0;
+    }
+}
+
+.app-bloqueio.saindo{
+    animation: bloq-sair 0.35s ease-in forwards;
+}
