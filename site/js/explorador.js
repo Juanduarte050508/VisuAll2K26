@@ -60,7 +60,7 @@
        ---------------------------------------------------------------------- */
 
     var TEXTOS = {
-        'inicio':           ['Câmera', 'Comece por aqui', 'Este celular funciona de verdade: toque em qualquer botão e ele reage como no aplicativo. A explicação de cada função aparece aqui.', 'Para abrir o modo Libras, toque no botão redondo amarelo no canto de cima.'],
+        'inicio':           ['Câmera', 'Comece por aqui', 'Toque em qualquer botão: ele reage como no aplicativo, e a explicação aparece aqui.', 'Comece pelo botão redondo amarelo, no canto de cima.'],
         'flash':            ['Câmera', 'Flash', 'Alterna entre automático, ligado e desligado.'],
         'formato':          ['Câmera', 'Formato da imagem', 'Troca a proporção entre 4:3 e 16:9. Repare no visor mudando de altura.'],
         'timer':            ['Câmera', 'Timer', 'Define uma contagem regressiva antes do disparo: desligado, 3 ou 10 segundos.'],
