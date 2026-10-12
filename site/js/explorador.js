@@ -93,42 +93,55 @@
         'atalho':           ['Atalho', 'Direto para a tela', 'Os atalhos acima levam a cada parte do app. Dentro do celular, os botões fazem o mesmo caminho que no aplicativo.']
     };
 
-    /* Faz uma mudança na explicação sem deixar o celular sair do lugar.
-       No celular a explicação fica acima do aparelho, e cada texto tem uma
-       altura: sem isto, o aparelho sobe ou desce a cada toque. Alguns
-       navegadores compensam esse salto sozinhos e outros não (o Safari do
-       iPhone, por exemplo), então a compensação é feita aqui, igual em todos. */
-    function semPulo(mudar) {
-        var raiz = document.documentElement;
-        var antes = app.getBoundingClientRect().top;
-        raiz.style.overflowAnchor = 'none';
-        mudar();
-        var salto = app.getBoundingClientRect().top - antes;
-        if (salto) { window.scrollBy({ top: salto, behavior: 'instant' }); }
-        raiz.style.overflowAnchor = '';
+    /* Escreve uma explicação num cartão (o de verdade ou a cópia de medição) */
+    function preencher(cartao, t) {
+        cartao.querySelector('.x-info-rotulo').textContent = t[0];
+        cartao.querySelector('h3').textContent = t[1];
+        cartao.querySelector('.x-info-texto').textContent = t[2];
+        var dica = cartao.querySelector('.x-info-dica');
+        dica.textContent = t[3] || '';
+        dica.hidden = !t[3];
+
+        // algumas explicações trazem uma captura do app (t[4] = arquivo, t[5] = descrição)
+        var imagem = cartao.querySelector('.x-info-imagem');
+        imagem.hidden = !t[4];
+        if (t[4] && cartao === info) { imagem.src = t[4]; imagem.alt = t[5]; }
     }
 
     function explicar(chave) {
         var t = TEXTOS[chave];
         if (!t || !info) { return; }
-
-        semPulo(function () {
-            info.querySelector('.x-info-rotulo').textContent = t[0];
-            info.querySelector('h3').textContent = t[1];
-            info.querySelector('.x-info-texto').textContent = t[2];
-            var dica = info.querySelector('.x-info-dica');
-            dica.textContent = t[3] || '';
-            dica.hidden = !t[3];
-
-            // algumas explicações trazem uma captura do app (t[4] = arquivo, t[5] = descrição)
-            var imagem = info.querySelector('.x-info-imagem');
-            imagem.hidden = !t[4];
-            if (t[4]) { imagem.src = t[4]; imagem.alt = t[5]; }
-        });
-
+        preencher(info, t);
         info.classList.remove('trocando');
         void info.offsetWidth;                // recomeça a animação de entrada
         info.classList.add('trocando');
+    }
+
+    /* No celular a explicação fica acima do aparelho. Para o aparelho não
+       subir nem descer a cada toque, o cartão ganha de uma vez a altura da
+       explicação mais longa: mede todas numa cópia invisível e fixa a maior.
+       No desktop o cartão fica ao lado e não precisa disso. */
+    var telaEstreita = window.matchMedia('(max-width: 900px)');
+    var larguraMedida = 0;
+
+    function fixarAltura() {
+        if (!telaEstreita.matches) { info.style.minHeight = ''; larguraMedida = 0; return; }
+        if (info.offsetWidth === larguraMedida) { return; }
+        larguraMedida = info.offsetWidth;
+
+        var copia = info.cloneNode(true);
+        var maior = 0;
+        copia.removeAttribute('aria-live');
+        copia.setAttribute('aria-hidden', 'true');
+        copia.classList.remove('trocando');
+        copia.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;min-height:0;width:' + larguraMedida + 'px';
+        info.parentNode.appendChild(copia);
+        Object.keys(TEXTOS).forEach(function (chave) {
+            preencher(copia, TEXTOS[chave]);
+            maior = Math.max(maior, copia.offsetHeight);
+        });
+        copia.remove();
+        info.style.minHeight = maior + 'px';
     }
 
     /* ----------------------------------------------------------------------
@@ -487,7 +500,7 @@
     function assumir() {
         pararDemo();
         demo.feita = true;
-        if (!convite.hidden) { semPulo(function () { convite.hidden = true; }); }
+        convite.hidden = true;
         app.classList.add('tocado');
     }
 
@@ -508,7 +521,7 @@
         if (demo.feita || demo.rodando) { return; }
         demo.rodando = true;
         demo.feita = true;
-        semPulo(function () { convite.textContent = 'Demonstração automática · toque para assumir'; });
+        convite.textContent = 'Demonstração automática · toque para assumir';
 
         var passos = [
             [1400, '[data-acao="abrir-libras"]'],
@@ -527,7 +540,7 @@
             estado.linhas = false;
             desenhar();
             explicar('inicio');
-            semPulo(function () { convite.textContent = 'Sua vez: toque nos botões do celular'; });
+            convite.textContent = 'Sua vez: toque nos botões do celular';
         }, 12600));
     }
 
@@ -543,6 +556,13 @@
             }
         }, { threshold: 0.7 });
         vigia.observe(app);
+    }
+
+    fixarAltura();
+    window.addEventListener('resize', fixarAltura);
+    window.addEventListener('load', function () { larguraMedida = 0; fixarAltura(); });
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () { larguraMedida = 0; fixarAltura(); });
     }
 
     desenhar();

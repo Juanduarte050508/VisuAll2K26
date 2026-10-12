@@ -829,6 +829,17 @@
    7. Galeria — vídeo emoldurado em amarelo
    -------------------------------------------------------------------------- */
 
+/* A seção do vídeo é a única com fundo dourado: quebra o ritmo do preto e
+   marca que ali há algo para assistir */
+.secao--video{
+    border-block: 1px solid var(--color-dourado);
+    background: linear-gradient(180deg, rgba(255, 211, 77, 0.1), rgba(232, 163, 31, 0.03));
+}
+
+.secao--video + .secao{
+    border-top: 0;
+}
+
 .galeria-video{
     display: grid;
     gap: var(--spacing-18);
@@ -840,6 +851,10 @@
     overflow: hidden;
     border: 2px solid var(--color-amarelo);
     border-radius: var(--radius-3xl);
+}
+
+.moldura--video{
+    box-shadow: 0 0 80px rgba(255, 211, 77, 0.18);
 }
 
 .moldura--video iframe{
@@ -871,12 +886,36 @@
 .video-play{
     position: absolute;
     inset: 0;
-    width: clamp(64px, 9vw, 96px);
+    width: clamp(72px, 9vw, 104px);
     aspect-ratio: 1;
     margin: auto;
     border-radius: var(--radius-full);
     background-color: var(--color-amarelo);
     transition: scale var(--t-media);
+}
+
+/* Anel que pulsa em volta do play, chamando o clique */
+.video-play::after{
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-full);
+    animation: video-pulso 1.8s ease-out infinite;
+}
+
+@keyframes video-pulso{
+    from{ box-shadow: 0 0 0 0 rgba(255, 211, 77, 0.65); }
+    to{   box-shadow: 0 0 0 30px rgba(255, 211, 77, 0); }
+}
+
+.video-legenda{
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--color-prata);
 }
 
 .video-play::before{
@@ -1332,19 +1371,29 @@
         order: 1;
     }
 
+    /* A altura do cartão é fixada pelo script (a da explicação mais longa),
+       para o celular logo abaixo nunca sair do lugar quando o texto muda */
     .x-info{
+        position: relative;
         order: -1;
         width: 100%;
         min-height: 150px;
-        padding: var(--spacing-18) var(--spacing-24);
+        padding: var(--spacing-30) var(--spacing-24) var(--spacing-18);
         border: 1px solid var(--color-linha);
         border-radius: var(--spacing-18);
         background-color: var(--color-preto);
     }
 
+    /* O aviso fica sobre a borda de cima do cartão, sem ocupar altura */
     .x-info-aviso{
-        margin-bottom: var(--spacing-12);
+        position: absolute;
+        top: 0;
+        left: var(--spacing-18);
+        max-width: calc(100% - 2 * var(--spacing-18));
+        margin: 0;
         padding: 3px var(--spacing-12);
+        translate: 0 -50%;
+        background-color: var(--color-preto);
         font-size: 11px;
     }
 
@@ -1363,9 +1412,9 @@
     .x-info-texto{
         max-width: none;
         margin-top: var(--spacing-12);
-        font-size: 15px;
+        font-size: 14px;
         font-weight: var(--font-weight-regular);
-        line-height: 1.55;
+        line-height: 1.5;
         text-wrap: pretty;
     }
 
@@ -1376,14 +1425,14 @@
         padding: var(--spacing-12) 0 0;
         border-left: 0;
         border-top: 1px solid var(--color-linha);
-        font-size: 14px;
-        line-height: 1.5;
+        font-size: 13.5px;
+        line-height: 1.45;
         color: var(--color-amarelo);
         text-wrap: pretty;
     }
 
     .x-info-imagem{
-        width: min(100%, 260px);
+        width: min(100%, 200px);
         margin-top: var(--spacing-12);
     }
 
