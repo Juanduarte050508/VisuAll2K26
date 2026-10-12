@@ -93,20 +93,39 @@
         'atalho':           ['Atalho', 'Direto para a tela', 'Os atalhos acima levam a cada parte do app. Dentro do celular, os botões fazem o mesmo caminho que no aplicativo.']
     };
 
+    /* Faz uma mudança na explicação sem deixar o celular sair do lugar.
+       No celular a explicação fica acima do aparelho, e cada texto tem uma
+       altura: sem isto, o aparelho sobe ou desce a cada toque. Alguns
+       navegadores compensam esse salto sozinhos e outros não (o Safari do
+       iPhone, por exemplo), então a compensação é feita aqui, igual em todos. */
+    function semPulo(mudar) {
+        var raiz = document.documentElement;
+        var antes = app.getBoundingClientRect().top;
+        raiz.style.overflowAnchor = 'none';
+        mudar();
+        var salto = app.getBoundingClientRect().top - antes;
+        if (salto) { window.scrollBy({ top: salto, behavior: 'instant' }); }
+        raiz.style.overflowAnchor = '';
+    }
+
     function explicar(chave) {
         var t = TEXTOS[chave];
         if (!t || !info) { return; }
-        info.querySelector('.x-info-rotulo').textContent = t[0];
-        info.querySelector('h3').textContent = t[1];
-        info.querySelector('.x-info-texto').textContent = t[2];
-        var dica = info.querySelector('.x-info-dica');
-        dica.textContent = t[3] || '';
-        dica.hidden = !t[3];
 
-        // algumas explicações trazem uma captura do app (t[4] = arquivo, t[5] = descrição)
-        var imagem = info.querySelector('.x-info-imagem');
-        imagem.hidden = !t[4];
-        if (t[4]) { imagem.src = t[4]; imagem.alt = t[5]; }
+        semPulo(function () {
+            info.querySelector('.x-info-rotulo').textContent = t[0];
+            info.querySelector('h3').textContent = t[1];
+            info.querySelector('.x-info-texto').textContent = t[2];
+            var dica = info.querySelector('.x-info-dica');
+            dica.textContent = t[3] || '';
+            dica.hidden = !t[3];
+
+            // algumas explicações trazem uma captura do app (t[4] = arquivo, t[5] = descrição)
+            var imagem = info.querySelector('.x-info-imagem');
+            imagem.hidden = !t[4];
+            if (t[4]) { imagem.src = t[4]; imagem.alt = t[5]; }
+        });
+
         info.classList.remove('trocando');
         void info.offsetWidth;                // recomeça a animação de entrada
         info.classList.add('trocando');
@@ -401,7 +420,6 @@
         segurou = false;
         desenhar();
         explicar(chave);
-        if (evento.isTrusted) { mostrarExplicacao(); }
     });
 
     // Segurar a lixeira apaga a frase toda
@@ -435,7 +453,6 @@
             assumir();
             desenhar();
             explicar({ camera: 'voltar', libras: 'alfabeto', corpo: 'corpo', oculos: 'oculos', resposta: 'resposta' }[botao.dataset.atalho]);
-            mostrarExplicacao();
         });
     });
 
@@ -470,20 +487,8 @@
     function assumir() {
         pararDemo();
         demo.feita = true;
-        convite.hidden = true;
+        if (!convite.hidden) { semPulo(function () { convite.hidden = true; }); }
         app.classList.add('tocado');
-    }
-
-    /* No celular a explicação fica acima do aparelho: se ela estiver escondida
-       atrás do cabeçalho na hora do toque, a página sobe até ela aparecer */
-    function mostrarExplicacao() {
-        if (!window.matchMedia('(max-width: 900px)').matches) { return; }
-        var cabecalho = document.querySelector('.cabecalho');
-        var topo = (cabecalho ? cabecalho.offsetHeight : 0) + 12;
-        var caixa = info.getBoundingClientRect();
-        if (caixa.top + caixa.height / 2 < topo) {
-            window.scrollBy({ top: caixa.top - topo, behavior: 'smooth' });
-        }
     }
 
     function tocarSozinho(seletor) {
@@ -503,7 +508,7 @@
         if (demo.feita || demo.rodando) { return; }
         demo.rodando = true;
         demo.feita = true;
-        convite.textContent = 'Demonstração automática · toque para assumir';
+        semPulo(function () { convite.textContent = 'Demonstração automática · toque para assumir'; });
 
         var passos = [
             [1400, '[data-acao="abrir-libras"]'],
@@ -522,7 +527,7 @@
             estado.linhas = false;
             desenhar();
             explicar('inicio');
-            convite.textContent = 'Sua vez: toque nos botões do celular';
+            semPulo(function () { convite.textContent = 'Sua vez: toque nos botões do celular'; });
         }, 12600));
     }
 
