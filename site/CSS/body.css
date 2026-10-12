@@ -829,17 +829,6 @@
    7. Galeria — vídeo emoldurado em amarelo
    -------------------------------------------------------------------------- */
 
-/* A seção do vídeo é a única com fundo dourado: quebra o ritmo do preto e
-   marca que ali há algo para assistir */
-.secao--video{
-    border-block: 1px solid var(--color-dourado);
-    background: linear-gradient(180deg, rgba(255, 211, 77, 0.1), rgba(232, 163, 31, 0.03));
-}
-
-.secao--video + .secao{
-    border-top: 0;
-}
-
 .galeria-video{
     display: grid;
     gap: var(--spacing-18);
@@ -853,8 +842,11 @@
     border-radius: var(--radius-3xl);
 }
 
+/* Luz dourada saindo de trás do vídeo; o resto da seção continua preto */
 .moldura--video{
-    box-shadow: 0 0 80px rgba(255, 211, 77, 0.18);
+    box-shadow:
+        0 0 50px rgba(255, 211, 77, 0.3),
+        0 0 150px rgba(232, 163, 31, 0.22);
 }
 
 .moldura--video iframe{
