@@ -25,6 +25,9 @@ body{
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
+    /* clip, ao contrário de hidden, também impede que reduzir o zoom no
+       celular revele uma faixa vazia ao lado da página */
+    overflow-x: clip;
 }
 
 /* Títulos em peso regular: quem cria a hierarquia é o tamanho */

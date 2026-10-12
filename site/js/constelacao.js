@@ -1,7 +1,7 @@
 /* ==========================================================================
    VisuAll — animações de enfeite
    1. Constelação: triângulos que se reúnem para desenhar o olho da logo,
-      desviam do ponteiro e se dispersam conforme a página rola.
+      desviam do ponteiro e se dispersam quando o desenho sai da tela.
    2. Títulos: as palavras sobem uma a uma quando o título entra na tela.
    Nada aqui é essencial: sem este arquivo o site funciona igual, com a logo
    estática no lugar da constelação.
@@ -275,10 +275,16 @@
         }
     }
 
+    /* O olho fica formado enquanto o desenho está no meio da tela e só se
+       desfaz quando ele vai saindo por cima. Medir pela posição do desenho,
+       e não pela rolagem da página, faz valer também no celular, onde ele
+       fica abaixo do texto e só aparece depois de rolar. */
     function medirRolagem() {
-        var hero = palco.closest('.hero') || palco;
-        var limite = Math.max(1, hero.offsetHeight * 0.7);
-        dispersao = Math.max(0, Math.min(1, window.scrollY / limite));
+        var caixa = palco.getBoundingClientRect();
+        var centro = caixa.top + caixa.height / 2;
+        var inicio = window.innerHeight * 0.3;
+        var percurso = Math.max(1, caixa.height * 0.6);
+        dispersao = Math.max(0, Math.min(1, (inicio - centro) / percurso));
     }
 
     // Ouve no palco inteiro: a tela de desenho fica por baixo de outros elementos
@@ -299,6 +305,7 @@
     // Medir uma vez só não basta: se o CSS chegar depois do script, o desenho
     // fica na resolução padrão e o navegador o estica, borrando tudo.
     window.addEventListener('resize', redimensionar);
+    window.addEventListener('resize', medirRolagem);
     window.addEventListener('load', redimensionar);
     if ('ResizeObserver' in window) {
         new ResizeObserver(redimensionar).observe(tela);

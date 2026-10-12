@@ -60,6 +60,7 @@
        ---------------------------------------------------------------------- */
 
     var TEXTOS = {
+        'inicio':           ['Câmera', 'Comece por aqui', 'Este celular funciona de verdade: toque em qualquer botão e ele reage como no aplicativo. A explicação de cada função aparece aqui.', 'Para abrir o modo Libras, toque no botão redondo amarelo no canto de cima.'],
         'flash':            ['Câmera', 'Flash', 'Alterna entre automático, ligado e desligado.'],
         'formato':          ['Câmera', 'Formato da imagem', 'Troca a proporção entre 4:3 e 16:9. Repare no visor mudando de altura.'],
         'timer':            ['Câmera', 'Timer', 'Define uma contagem regressiva antes do disparo: desligado, 3 ou 10 segundos.'],
@@ -394,11 +395,13 @@
         var acao = botao.dataset.acao;
         if (!ACOES[acao]) { return; }
 
-        app.classList.add('tocado');
+        // os toques da demonstração automática não contam como toque da pessoa
+        if (evento.isTrusted) { assumir(); }
         var chave = ACOES[acao](botao) || acao;
         segurou = false;
         desenhar();
         explicar(chave);
+        if (evento.isTrusted) { mostrarExplicacao(); }
     });
 
     // Segurar a lixeira apaga a frase toda
@@ -429,11 +432,112 @@
             estado.historicoAberto = false;
             estado.bloqueado = false;
             ATALHOS[botao.dataset.atalho]();
-            app.classList.add('tocado');
+            assumir();
             desenhar();
             explicar({ camera: 'voltar', libras: 'alfabeto', corpo: 'corpo', oculos: 'oculos', resposta: 'resposta' }[botao.dataset.atalho]);
         });
     });
+
+    /* ----------------------------------------------------------------------
+       Demonstração automática
+       Quando o explorador aparece na tela, o celular faz sozinho um caminho
+       curto (abre o modo Libras, lê a palavra, mostra as linhas e volta), como
+       um aparelho de vitrine. Qualquer toque da pessoa encerra a demonstração
+       e devolve o controle. Um aviso no alto da explicação diz o que está
+       acontecendo.
+       ---------------------------------------------------------------------- */
+
+    var convite = document.createElement('p');
+    var demo = { relogios: [], rodando: false, feita: false };
+    var dedo = document.createElement('span');
+
+    convite.className = 'x-info-aviso';
+    convite.textContent = 'Toque nos botões do celular, é de verdade';
+    info.insertBefore(convite, info.firstChild);
+
+    dedo.className = 'app-toque';
+    dedo.setAttribute('aria-hidden', 'true');
+    app.appendChild(dedo);
+
+    function pararDemo() {
+        demo.relogios.forEach(window.clearTimeout);
+        demo.relogios = [];
+        demo.rodando = false;
+    }
+
+    /* A pessoa tocou: a demonstração para e o aviso some de vez */
+    function assumir() {
+        pararDemo();
+        demo.feita = true;
+        convite.hidden = true;
+        app.classList.add('tocado');
+    }
+
+    /* No celular a explicação fica acima do aparelho: se ela estiver escondida
+       atrás do cabeçalho na hora do toque, a página sobe até ela aparecer */
+    function mostrarExplicacao() {
+        if (!window.matchMedia('(max-width: 900px)').matches) { return; }
+        var cabecalho = document.querySelector('.cabecalho');
+        var topo = (cabecalho ? cabecalho.offsetHeight : 0) + 12;
+        var caixa = info.getBoundingClientRect();
+        if (caixa.top + caixa.height / 2 < topo) {
+            window.scrollBy({ top: caixa.top - topo, behavior: 'smooth' });
+        }
+    }
+
+    function tocarSozinho(seletor) {
+        var botao = $(seletor);
+        if (!botao || !demo.rodando) { return; }
+        var caixa = botao.getBoundingClientRect();
+        var base = app.getBoundingClientRect();
+        dedo.style.left = (caixa.left + caixa.width / 2 - base.left) + 'px';
+        dedo.style.top = (caixa.top + caixa.height / 2 - base.top) + 'px';
+        dedo.classList.remove('tocando');
+        void dedo.offsetWidth;
+        dedo.classList.add('tocando');
+        demo.relogios.push(window.setTimeout(function () { botao.click(); }, 260));
+    }
+
+    function iniciarDemo() {
+        if (demo.feita || demo.rodando) { return; }
+        demo.rodando = true;
+        demo.feita = true;
+        convite.textContent = 'Demonstração automática · toque para assumir';
+
+        var passos = [
+            [1400, '[data-acao="abrir-libras"]'],
+            [5600, '[data-acao="linhas"]'],
+            [9800, '[data-acao="linhas"]'],
+            [11200, '[data-acao="voltar"]']
+        ];
+        passos.forEach(function (passo) {
+            demo.relogios.push(window.setTimeout(function () { tocarSozinho(passo[1]); }, passo[0]));
+        });
+
+        // fim: volta ao começo e troca o aviso por um convite
+        demo.relogios.push(window.setTimeout(function () {
+            pararDemo();
+            estado.reconhecido = [];
+            estado.linhas = false;
+            desenhar();
+            explicar('inicio');
+            convite.textContent = 'Sua vez: toque nos botões do celular';
+        }, 12600));
+    }
+
+    explorador.addEventListener('pointerdown', function () { if (demo.rodando) { assumir(); } });
+    explorador.addEventListener('keydown', function () { if (demo.rodando) { assumir(); } });
+
+    var poucoMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!poucoMovimento && 'IntersectionObserver' in window) {
+        var vigia = new IntersectionObserver(function (entradas) {
+            if (entradas[0].isIntersecting) {
+                vigia.disconnect();
+                iniciarDemo();
+            }
+        }, { threshold: 0.7 });
+        vigia.observe(app);
+    }
 
     desenhar();
 })();

@@ -19,7 +19,7 @@
 /* Bloco da marca: aqui a logo aparece completa, com o nome ---------------- */
 
 .rodape-logo{
-    width: 150px;
+    width: 112px;
     height: auto;
     transition: scale var(--t-media);
 }
@@ -103,6 +103,14 @@
     .rodape-grade{
         grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
         column-gap: var(--spacing-18);
+    }
+
+    .rodape{
+        padding-top: var(--spacing-36);
+    }
+
+    .rodape-logo{
+        width: 84px;
     }
 
     .rodape-coluna a{

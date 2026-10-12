@@ -330,6 +330,25 @@
     animation: flutuar 5s ease-in-out infinite alternate;
 }
 
+/* Ícone próprio de cada seção, no traço da logo (a logo fica para o
+   cabeçalho, o hero, o celular e o rodapé) */
+.secao-icone{
+    width: clamp(84px, 8.5vw, 124px);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--color-amarelo);
+    overflow: visible;
+}
+
+.icones-secao{
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
 .secao-lead{
     max-width: 32ch;
     font-size: var(--text-heading-2xs);
@@ -428,6 +447,26 @@
     font-weight: var(--font-weight-extralight);
     line-height: var(--leading-heading-2xs);
     color: var(--color-prata);
+}
+
+/* Aviso no alto do painel: demonstração automática ou convite a tocar
+   (criado por js/explorador.js, some no primeiro toque) */
+.x-info-aviso{
+    display: inline-block;
+    margin-bottom: var(--spacing-18);
+    padding: var(--spacing-6) var(--spacing-12);
+    border: 1px solid var(--color-amarelo);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-amarelo);
+}
+
+.x-info-aviso[hidden]{
+    display: none;
 }
 
 /* Dica do próximo passo, com um fio amarelo à esquerda */
@@ -1222,28 +1261,30 @@
         width: 96px;
     }
 
-    /* Explorador em coluna: a explicação vira uma faixa compacta presa no topo,
-       logo abaixo do cabeçalho, para continuar visível enquanto a pessoa toca
-       nos botões. O celular é dimensionado pela altura da tela, para os dois
-       caberem juntos. */
+    /* Explorador em coluna: a explicação é um cartão compacto logo acima do
+       celular, que rola junto com a página (não cobre o aparelho). O celular
+       é dimensionado pela altura da tela, para os dois caberem juntos. */
     .x-palco{
-        --w: clamp(220px, calc((100svh - var(--altura-header) - 230px) / 2.18), min(72vw, 300px));
+        --w: clamp(216px, calc((100svh - var(--altura-header) - 190px) / 2.18), min(72vw, 300px));
         grid-template-columns: 1fr;
         justify-items: center;
         row-gap: var(--spacing-18);
     }
 
     .x-info{
-        position: sticky;
-        top: calc(var(--altura-header) + var(--spacing-6));
-        z-index: 2;
         order: -1;
         width: 100%;
-        min-height: 132px;
+        min-height: 124px;
         padding: var(--spacing-12) var(--spacing-18);
         border: 1px solid var(--color-linha);
         border-radius: var(--spacing-18);
-        background-color: rgba(13, 13, 13, 0.94);
+        background-color: var(--color-preto);
+    }
+
+    .x-info-aviso{
+        margin-bottom: var(--spacing-6);
+        padding: 3px var(--spacing-12);
+        font-size: 11px;
     }
 
     .x-info-rotulo{
@@ -1280,23 +1321,17 @@
         margin-top: var(--spacing-12);
     }
 
-    /* Painel dividido vira empilhado: a resposta desce para baixo do problema */
-    .grade-solucao{
-        grid-template-columns: 1fr;
-    }
-
+    /* Painel dividido: problema e resposta continuam lado a lado, mais enxutos */
     .grade-solucao::after{
-        display: none;
+        top: 48px;
+        width: 36px;
+        height: 36px;
+        font-size: var(--text-body);
     }
 
     .cartao,
     .cartao--resposta{
         padding: var(--spacing-36) var(--spacing-30);
-    }
-
-    .cartao--resposta{
-        border-top: 1px solid var(--color-amarelo);
-        border-left: 0;
     }
 
     /* Ficha técnica: nome em cima, descrição embaixo */
@@ -1370,19 +1405,19 @@
     }
 
 }
-/* Celular: conteúdo compacto. Em vez de cartões altos empilhados, cada seção
-   vira uma estrutura enxuta (faixa, lista ou tabela), com itens lado a lado
-   sempre que o texto é curto, para ninguém rolar muito por um bloco só. */
+/* Celular: cada seção numa estrutura enxuta e arejada, com itens lado a lado
+   quando o texto é curto e cartões que deslizam para o lado quando é longo,
+   para a página não ficar nem espremida nem comprida. */
 @media (max-width: 560px){
     .secao{
-        padding-block: 48px;
+        padding-block: 56px;
     }
 
     .recipiente{
-        gap: var(--spacing-24);
+        gap: var(--spacing-30);
     }
 
-    /* Cabeçalho de seção: rótulo e título à esquerda, logo pequena à direita */
+    /* Cabeçalho de seção: rótulo e título à esquerda, ícone pequeno à direita */
     .secao-cabecalho{
         grid-template-columns: minmax(0, 1fr) auto;
         gap: var(--spacing-6) var(--spacing-18);
@@ -1399,7 +1434,7 @@
 
     .secao-objeto{
         grid-area: 1 / 2 / span 2;
-        width: 68px;
+        width: 60px;
     }
 
     .secao-lead{
@@ -1417,7 +1452,7 @@
     .item-tecnologia dd{
         margin-top: var(--spacing-6);
         font-size: 15px;
-        line-height: 1.45;
+        line-height: 1.5;
     }
 
     .cartao h3,
@@ -1447,88 +1482,105 @@
         line-height: 1.4;
     }
 
-    /* 02 Solução: as duas metades continuam empilhadas, mas enxutas */
+    /* 02 Solução: problema e resposta lado a lado */
+    .grade-solucao{
+        border-radius: var(--spacing-18);
+    }
+
+    .grade-solucao::after{
+        top: 26px;
+        width: 26px;
+        height: 26px;
+        font-size: var(--text-label);
+    }
+
     .cartao,
     .cartao--resposta{
-        padding: var(--spacing-18);
+        padding: var(--spacing-18) 14px;
     }
 
     .cartao h3{
-        font-size: 21px;
+        font-size: 17px;
+    }
+
+    .cartao p{
+        font-size: 14px;
+        line-height: 1.45;
     }
 
     .cartao-numero{
         margin-bottom: var(--spacing-12);
-        font-size: var(--text-caption);
+        padding: 3px 10px;
+        font-size: 11px;
     }
 
     /* 03 Funcionamento: linha do tempo com marcos menores */
     .etapas{
-        gap: var(--spacing-18);
+        gap: var(--spacing-24);
     }
 
     .etapa{
-        min-height: 34px;
-        padding-left: calc(34px + var(--spacing-12));
+        min-height: 36px;
+        padding-left: calc(36px + var(--spacing-18));
     }
 
     .etapa::before{
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
         font-size: var(--text-label);
     }
 
     .etapa h3{
-        padding-top: 6px;
+        padding-top: 7px;
     }
 
     .etapa:not(:last-child)::after{
-        top: 34px;
-        left: 16px;
-        bottom: calc(var(--spacing-18) * -1);
+        top: 36px;
+        left: 17px;
+        bottom: calc(var(--spacing-24) * -1);
     }
 
     .destaque-local{
-        padding: var(--spacing-18);
+        padding: var(--spacing-18) var(--spacing-24);
     }
 
     .destaque-local p{
         font-size: 19px;
-        line-height: 1.3;
+        line-height: 1.35;
         letter-spacing: -0.01em;
     }
 
-    /* 04 Público-alvo: lista numerada, sem caixas */
+    /* 04 Público-alvo: os cartões ficam lado a lado e deslizam com o dedo;
+       a ponta do próximo aparece na borda para convidar a arrastar */
     .grade-publico{
-        grid-template-columns: 1fr;
-        gap: 0;
-        border-top: 1px solid var(--color-linha);
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: 76%;
+        gap: var(--spacing-12);
+        margin-inline: calc(var(--margem-pagina) * -1);
+        padding-inline: var(--margem-pagina);
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: var(--margem-pagina);
+        scrollbar-width: none;
+    }
+
+    .grade-publico::-webkit-scrollbar{
+        display: none;
     }
 
     .card-publico{
-        grid-template-columns: auto minmax(0, 1fr);
-        column-gap: var(--spacing-12);
+        align-content: start;
         min-height: 0;
-        padding: var(--spacing-18) 0;
-        border: 0;
-        border-bottom: 1px solid var(--color-linha);
-        border-radius: 0;
-        background-color: transparent;
+        padding: 68px var(--spacing-18) var(--spacing-24);
+        border-radius: var(--spacing-18);
+        scroll-snap-align: start;
     }
 
     .card-publico::before{
-        position: static;
-        grid-row: 1 / span 2;
-        font-size: var(--text-label);
-        font-weight: var(--font-weight-semibold);
-        line-height: 23px;
-        letter-spacing: var(--tracking-label);
-        color: var(--color-amarelo);
-    }
-
-    .card-publico h3,
-    .card-publico p{
-        grid-column: 2;
+        top: var(--spacing-12);
+        right: var(--spacing-18);
+        font-size: 48px;
     }
 
     /* Sem hover em telas de toque: evita o "salto" disparado pelo tap */
@@ -1536,33 +1588,23 @@
         translate: none;
     }
 
-    /* 05 Tecnologia: tabela de duas colunas, com as células divididas por fios */
-    .grade-tecnologia{
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        overflow: hidden;
-        border: 1px solid var(--color-linha);
-        border-radius: var(--spacing-18);
-    }
-
+    /* 05 Tecnologia: tabela de linhas, nome à esquerda e descrição à direita */
     .item-tecnologia,
     .item-tecnologia:hover{
-        align-content: start;
-        gap: 0;
-        padding: var(--spacing-18) var(--spacing-12);
-    }
-
-    .item-tecnologia:nth-child(odd){
-        border-right: 1px solid var(--color-linha);
-    }
-
-    .item-tecnologia:nth-last-child(-n + 2){
-        border-bottom: 0;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        align-items: start;
+        gap: var(--spacing-12);
+        padding: var(--spacing-18) var(--spacing-6);
     }
 
     .item-tecnologia dt::before{
         display: block;
         margin: 0 0 var(--spacing-6);
         font-size: var(--text-caption);
+    }
+
+    .item-tecnologia dd{
+        margin-top: 0;
     }
 
     /* Equipe e contato */
@@ -1600,6 +1642,16 @@
 /* A constelação assume o lugar da logo estática e dos triângulos em CSS */
 .constelacao-ativa .constelacao{
     display: block;
+}
+
+/* Em telas estreitas a constelação cabe dentro do palco: sem isso ela passa
+   da borda da tela e cria uma faixa vazia ao lado da página */
+@media (max-width: 900px){
+    .constelacao{
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
 }
 
 .constelacao-ativa::before,

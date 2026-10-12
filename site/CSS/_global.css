@@ -80,7 +80,7 @@
 
 @media (max-width: 560px){
     :root{
-        --margem-pagina: 18px;
+        --margem-pagina: 20px;
         --altura-header: 76px;
         --text-heading-2xs: 20px;
         --text-heading-xs: 22px;

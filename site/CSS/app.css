@@ -933,3 +933,27 @@
 .app-bloqueio.saindo{
     animation: bloq-sair 0.35s ease-in forwards;
 }
+
+/* Toque da demonstração automática: um círculo claro que aparece e some no
+   ponto onde o "dedo" encosta (como a opção "mostrar toques" do Android) */
+.app-toque{
+    position: absolute;
+    z-index: 30;
+    width: 13cqw;
+    height: 13cqw;
+    margin: -6.5cqw 0 0 -6.5cqw;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.55);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app-toque.tocando{
+    animation: app-toque 0.7s ease-out;
+}
+
+@keyframes app-toque{
+    0%{   opacity: 0;   scale: 1.5; }
+    30%{  opacity: 0.9; scale: 0.8; }
+    100%{ opacity: 0;   scale: 1.3; }
+}
