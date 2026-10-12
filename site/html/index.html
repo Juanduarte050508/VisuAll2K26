@@ -22,19 +22,18 @@
     <link rel="icon" href="../images/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" href="../images/favicon-180.png">
 
-    <!-- Antecipa a conexão com o servidor de fontes, reduzindo o atraso de carga -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- A fonte fica no próprio site (fonts/): carregá-la já no começo evita a
+         troca de letra visível enquanto a página abre -->
+    <link rel="preload" href="../fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-    <!-- Fonte e estilos ligados direto aqui (sem @import em cadeia). O "?v=" força o
+    <!-- Estilos ligados direto aqui (sem @import em cadeia). O "?v=" força o
          navegador a buscar a versão nova em vez de reaproveitar uma antiga em cache. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&display=swap">
-    <link rel="stylesheet" href="../CSS/_global.css?v=18">
-    <link rel="stylesheet" href="../CSS/reset.css?v=18">
-    <link rel="stylesheet" href="../CSS/header.css?v=18">
-    <link rel="stylesheet" href="../CSS/body.css?v=18">
-    <link rel="stylesheet" href="../CSS/app.css?v=18">
-    <link rel="stylesheet" href="../CSS/footer.css?v=18">
+    <link rel="stylesheet" href="../CSS/_global.css?v=19">
+    <link rel="stylesheet" href="../CSS/reset.css?v=19">
+    <link rel="stylesheet" href="../CSS/header.css?v=19">
+    <link rel="stylesheet" href="../CSS/body.css?v=19">
+    <link rel="stylesheet" href="../CSS/app.css?v=19">
+    <link rel="stylesheet" href="../CSS/footer.css?v=19">
 </head>
 <body>
 
@@ -88,10 +87,14 @@
 
                 <h1>Libras em tempo real, <em>na câmera que você já tem</em></h1>
 
+                <!-- Duas versões do mesmo texto: a completa no desktop e a curta no
+                     celular, para o botão aparecer já na primeira tela -->
                 <p class="hero-lead">
-                    O VisuAll é um modo Libras dentro do próprio aplicativo de câmera do
+                    <span class="so-desktop">O VisuAll é um modo Libras dentro do próprio aplicativo de câmera do
                     smartphone. Aponte, sinalize e a tradução aparece na tela,
-                    sem instalar nada extra e sem precisar de internet.
+                    sem instalar nada extra e sem precisar de internet.</span>
+                    <span class="so-celular">Um modo Libras dentro da câmera do seu celular.
+                    Aponte, sinalize e leia a tradução, sem internet.</span>
                 </p>
 
                 <div class="hero-acoes">
@@ -711,9 +714,9 @@
     </footer>
 
     <!-- Scripts de enfeite e interação. Sem eles o site continua navegável. -->
-    <script src="../js/constelacao.js?v=18" defer></script>
-    <script src="../js/explorador.js?v=18" defer></script>
-    <script src="../js/carrossel.js?v=18" defer></script>
-    <script src="../js/video.js?v=18" defer></script>
+    <script src="../js/constelacao.js?v=19" defer></script>
+    <script src="../js/explorador.js?v=19" defer></script>
+    <script src="../js/carrossel.js?v=19" defer></script>
+    <script src="../js/video.js?v=19" defer></script>
 </body>
 </html>

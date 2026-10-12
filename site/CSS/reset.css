@@ -115,3 +115,19 @@ button, input, textarea{
         animation-iteration-count: 1 !important;
     }
 }
+
+/* Texto alternativo por tamanho de tela: .so-celular só aparece no celular e
+   .so-desktop some nele (usado quando o celular pede uma versão mais curta) */
+.so-celular{
+    display: none;
+}
+
+@media (max-width: 560px){
+    .so-celular{
+        display: inline;
+    }
+
+    .so-desktop{
+        display: none;
+    }
+}

@@ -1524,6 +1524,16 @@
         letter-spacing: -0.01em;
     }
 
+    .hero-lead{
+        margin-top: var(--spacing-18);
+        font-size: 19px;
+        font-weight: var(--font-weight-light);
+    }
+
+    .hero-acoes{
+        margin-top: var(--spacing-24);
+    }
+
     /* Hero: os três números lado a lado, numa faixa só */
     .hero-metricas{
         gap: var(--spacing-12);
