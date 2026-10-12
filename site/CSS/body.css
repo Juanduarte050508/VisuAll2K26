@@ -593,6 +593,30 @@
     text-wrap: balance;
 }
 
+/* Os dois cartões dividem as mesmas linhas (etiqueta, título, frase e cada
+   ponto da lista): assim tudo fica na mesma altura dos dois lados, mesmo
+   quando um texto quebra em mais linhas que o outro. */
+@supports (grid-template-rows: subgrid){
+    .grade-solucao{
+        grid-template-rows: repeat(6, auto);
+    }
+
+    .cartao{
+        display: grid;
+        grid-row: span 6;
+        grid-template-rows: subgrid;
+    }
+
+    .cartao-numero{
+        justify-self: start;
+    }
+
+    .cartao-lista{
+        grid-row: span 3;
+        grid-template-rows: subgrid;
+    }
+}
+
 .cartao-numero{
     display: inline-block;
     margin-bottom: var(--spacing-24);
