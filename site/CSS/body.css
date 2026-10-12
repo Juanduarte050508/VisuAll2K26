@@ -1326,6 +1326,12 @@
         row-gap: var(--spacing-18);
     }
 
+    /* Ordem no celular: explicação, celular e, por último, os atalhos. Assim
+       o aparelho, que é o principal, não fica lá embaixo */
+    .x-atalhos{
+        order: 1;
+    }
+
     .x-info{
         order: -1;
         width: 100%;

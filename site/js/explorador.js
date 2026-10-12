@@ -435,6 +435,7 @@
             assumir();
             desenhar();
             explicar({ camera: 'voltar', libras: 'alfabeto', corpo: 'corpo', oculos: 'oculos', resposta: 'resposta' }[botao.dataset.atalho]);
+            mostrarExplicacao();
         });
     });
 
