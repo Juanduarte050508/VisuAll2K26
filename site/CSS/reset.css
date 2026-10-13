@@ -102,20 +102,6 @@ button, input, textarea{
     border: 0;
 }
 
-@media (prefers-reduced-motion: reduce){
-    html{
-        scroll-behavior: auto;
-    }
-
-    *,
-    *::before,
-    *::after{
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-    }
-}
-
 /* Texto alternativo por tamanho de tela: .so-celular só aparece no celular e
    .so-desktop some nele (usado quando o celular pede uma versão mais curta) */
 .so-celular{

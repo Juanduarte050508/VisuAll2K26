@@ -295,17 +295,15 @@
 }
 
 @supports (animation-timeline: scroll()){
-    @media (prefers-reduced-motion: no-preference){
-        body::before{
-            content: '';
-            position: fixed;
-            inset: 0 0 auto 0;
-            z-index: 120;
-            height: 3px;
-            background-color: var(--color-amarelo);
-            transform-origin: left;
-            animation: progresso linear both;
-            animation-timeline: scroll(root);
-        }
+    body::before{
+        content: '';
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 120;
+        height: 3px;
+        background-color: var(--color-amarelo);
+        transform-origin: left;
+        animation: progresso linear both;
+        animation-timeline: scroll(root);
     }
 }

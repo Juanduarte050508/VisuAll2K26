@@ -547,8 +547,7 @@
     explorador.addEventListener('pointerdown', function () { if (demo.rodando) { assumir(); } });
     explorador.addEventListener('keydown', function () { if (demo.rodando) { assumir(); } });
 
-    var poucoMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!poucoMovimento && 'IntersectionObserver' in window) {
+    if ('IntersectionObserver' in window) {
         var vigia = new IntersectionObserver(function (entradas) {
             if (entradas[0].isIntersecting) {
                 vigia.disconnect();

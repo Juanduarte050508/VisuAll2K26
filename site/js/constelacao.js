@@ -11,7 +11,6 @@
     'use strict';
 
     var raiz = document.documentElement;
-    var poucoMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     raiz.classList.add('js');
 
@@ -49,7 +48,7 @@
 
     var titulos = document.querySelectorAll('.hero h1, .secao-titulo');
 
-    if (!poucoMovimento && 'IntersectionObserver' in window) {
+    if ('IntersectionObserver' in window) {
         var vigiaTitulos = new IntersectionObserver(function (entradas) {
             entradas.forEach(function (entrada) {
                 if (entrada.isIntersecting) {
@@ -202,7 +201,6 @@
         escala = palco.getBoundingClientRect().width * 0.36;
 
         if (!particulas.length) { criarParticulas(); }
-        if (poucoMovimento) { desenharParado(); }
     }
 
     function desenharTriangulo(p) {
@@ -219,17 +217,6 @@
         ctx.closePath();
         ctx.stroke();
         ctx.restore();
-    }
-
-    /* Movimento reduzido: o olho aparece pronto, sem animação */
-    function desenharParado() {
-        ctx.clearRect(0, 0, largura, altura);
-        ctx.lineWidth = 1;
-        particulas.forEach(function (p) {
-            p.x = largura / 2 + p.ax * escala;
-            p.y = altura / 2 + p.ay * escala;
-            desenharTriangulo(p);
-        });
     }
 
     function animar(agora) {
@@ -311,8 +298,6 @@
         new ResizeObserver(redimensionar).observe(tela);
     }
     redimensionar();
-
-    if (poucoMovimento) { return; }
 
     window.addEventListener('scroll', medirRolagem, { passive: true });
     medirRolagem();
