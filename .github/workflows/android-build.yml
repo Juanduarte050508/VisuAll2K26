@@ -17,10 +17,15 @@ on:
       - "mobile/**"
       - "computer/tests/fixtures/**"
       - ".github/workflows/android-build.yml"
+  # Tambem pela aba Actions, pra republicar o APK do site sem mexer no app.
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # contents: write so pra trocar o APK da release "app" (ultimo passo).
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: mobile
@@ -70,3 +75,18 @@ jobs:
           retention-days: 14
           # O APK ja e um zip; comprimir de novo so gasta tempo.
           compression-level: 0
+
+      # O APK que o site entrega. O botao e o QR apontam sempre para
+      # releases/download/app/VisuAll.apk; aqui so trocamos o arquivo da
+      # release "app", entao o link nunca muda. Ela e marcada como pre-release
+      # pra nao tomar o lugar da v1.0.0 como "Latest". O GitHub nao cobra
+      # armazenamento de release, diferente dos artefatos de cima.
+      - name: Publish APK for the site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk VisuAll.apk
+          gh release view app > /dev/null 2>&1 || gh release create app             --title "VisuAll para Android (versao de testes)"             --notes "APK mais recente da main, trocado automaticamente a cada build. Baixe pelo site."             --prerelease --target main
+          gh release upload app VisuAll.apk --clobber

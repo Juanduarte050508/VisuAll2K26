@@ -29,7 +29,27 @@ android {
         kotlinCompilerExtensionVersion '1.5.8'
     }
 
+    // Uma chave so pro projeto inteiro, versionada junto com o codigo.
+    //
+    // Sem isto cada maquina assina com o proprio ~/.android/debug.keystore, e
+    // o CI gera um novo a cada build. O Android so instala por cima quando a
+    // assinatura e a mesma, entao o APK do site (que sai do CI) nunca
+    // atualizava o app ja instalado: dava "app nao instalado" e era preciso
+    // desinstalar e perder o historico. E chave de debug, senha publica
+    // "android" -- serve pra versao de testes, nao pra uma loja.
+    signingConfigs {
+        debug {
+            storeFile file('visuall-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
