@@ -1198,6 +1198,310 @@
     background-color: var(--color-preto);
     rotate: 45deg;
 }
+
+/* Avaliação: formulário em duas colunas, no mesmo traço das linhas de canal */
+.avaliacao{
+    display: grid;
+    gap: var(--spacing-12);
+}
+
+.avaliacao-titulo{
+    font-size: var(--text-subheading);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-subheading);
+    letter-spacing: -0.03em;
+}
+
+.avaliacao-lead{
+    color: var(--color-prata);
+}
+
+.form-avaliacao{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-24);
+    margin-top: var(--spacing-24);
+}
+
+.campo{
+    display: grid;
+    gap: var(--spacing-12);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.campo--largo{
+    grid-column: 1 / -1;
+}
+
+.campo-rotulo{
+    padding: 0;
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-amarelo);
+}
+
+.campo-opcional{
+    font-weight: var(--font-weight-regular);
+    text-transform: none;
+    color: var(--color-cinza);
+}
+
+.campo-entrada{
+    width: 100%;
+    padding: var(--spacing-18);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--spacing-12);
+    background-color: var(--color-cartao);
+    color: var(--color-branco);
+    font: inherit;
+    font-size: var(--text-body);
+    transition: border-color var(--t-rapida);
+}
+
+.campo-entrada:hover{
+    border-color: rgba(255, 255, 255, 0.32);
+}
+
+.campo-entrada:focus-visible{
+    outline: none;
+    border-color: var(--color-amarelo);
+}
+
+textarea.campo-entrada{
+    resize: vertical;
+    min-height: 132px;
+}
+
+/* Estrelas: os rádios ficam escondidos e as labels acendem até a escolhida
+   (ou até a que está sob o mouse). Teclado: setas trocam a nota. */
+.estrelas{
+    display: flex;
+    gap: var(--spacing-6);
+}
+
+.estrelas label{
+    font-size: 36px;
+    line-height: 1;
+    color: var(--color-linha);
+    cursor: pointer;
+    transition: color var(--t-rapida), scale var(--t-rapida);
+}
+
+.estrelas label:hover{
+    scale: 1.12;
+}
+
+.estrelas input:focus-visible + label{
+    outline: 2px solid var(--color-amarelo);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.estrelas:has(#nota-1:checked) label:nth-of-type(-n+1),
+.estrelas:has(#nota-2:checked) label:nth-of-type(-n+2),
+.estrelas:has(#nota-3:checked) label:nth-of-type(-n+3),
+.estrelas:has(#nota-4:checked) label:nth-of-type(-n+4),
+.estrelas:has(#nota-5:checked) label:nth-of-type(-n+5),
+.estrelas:has(label:nth-of-type(1):hover) label:nth-of-type(-n+1),
+.estrelas:has(label:nth-of-type(2):hover) label:nth-of-type(-n+2),
+.estrelas:has(label:nth-of-type(3):hover) label:nth-of-type(-n+3),
+.estrelas:has(label:nth-of-type(4):hover) label:nth-of-type(-n+4),
+.estrelas:has(label:nth-of-type(5):hover) label:nth-of-type(-n+5){
+    color: var(--color-amarelo);
+}
+
+/* Avaliações aprovadas: cartões que se ajustam à largura, 1 a 3 por linha */
+.depoimentos{
+    display: grid;
+    gap: var(--spacing-24);
+}
+
+.depoimentos[hidden],
+.depoimentos-filtro[hidden],
+.depoimento[hidden]{
+    display: none;
+}
+
+/* Mesmas pílulas dos atalhos do explorador, alinhadas à esquerda */
+.depoimentos-filtro{
+    justify-content: flex-start;
+}
+
+.depoimentos-lista{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    gap: var(--spacing-24);
+}
+
+.depoimento{
+    display: grid;
+    align-content: start;
+    gap: var(--spacing-12);
+    padding: var(--spacing-24);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+}
+
+.depoimento-nota{
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    color: var(--color-amarelo);
+}
+
+.depoimento-texto{
+    color: var(--color-prata);
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+.depoimento-autor{
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+
+/* Fora da tela, mas não display:none: alguns robôs pulam campos ocultos */
+.campo-armadilha{
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.form-rodape{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-18);
+}
+
+.form-aviso{
+    font-size: var(--text-label);
+    color: var(--color-cinza);
+}
+
+.form-rodape .btn{
+    border: 0;
+    font-family: inherit;
+}
+
+.form-rodape .btn:disabled{
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.form-status:empty{
+    display: none;
+}
+
+.form-status--erro{
+    color: var(--color-amarelo);
+}
+
+/* --------------------------------------------------------------------------
+   9b. Baixar — botão e passos à esquerda, QR code à direita
+   -------------------------------------------------------------------------- */
+
+.grade-baixar{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-60);
+}
+
+.baixar-acao{
+    display: grid;
+    justify-items: start;
+    gap: var(--spacing-12);
+}
+
+.baixar-versao{
+    font-size: var(--text-label);
+    color: var(--color-cinza);
+}
+
+.baixar-passos{
+    width: 100%;
+    max-width: 560px;
+    margin-top: var(--spacing-24);
+    padding: 0;
+    list-style: none;
+    counter-reset: passo;
+    border-top: 1px solid var(--color-linha);
+}
+
+.baixar-passos li{
+    counter-increment: passo;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    padding: var(--spacing-18) 0;
+    border-bottom: 1px solid var(--color-linha);
+    color: var(--color-prata);
+}
+
+.baixar-passos li::before{
+    content: counter(passo);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-amarelo);
+}
+
+.baixar-qr{
+    display: grid;
+    justify-items: center;
+    gap: var(--spacing-12);
+    margin: 0;
+    padding: var(--spacing-24);
+    border: 1px solid var(--color-linha);
+    border-radius: var(--radius-3xl);
+    background-color: var(--color-cartao);
+}
+
+.baixar-qr img{
+    width: 200px;
+    height: 200px;
+    border-radius: var(--spacing-12);
+}
+
+.baixar-qr figcaption{
+    font-size: var(--text-label);
+    color: var(--color-prata);
+}
+
+/* No celular o QR não serve para nada (a pessoa já está nele) e o formulário
+   vira uma coluna só */
+@media (max-width: 900px){
+    .grade-baixar{
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .baixar-qr{
+        display: none;
+    }
+
+    .form-avaliacao{
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 560px){
+    .baixar-acao .btn,
+    .form-rodape .btn{
+        width: 100%;
+    }
+}
 /* --------------------------------------------------------------------------
    10. Animações guiadas pela rolagem — nativas, sem JavaScript
    -------------------------------------------------------------------------- */

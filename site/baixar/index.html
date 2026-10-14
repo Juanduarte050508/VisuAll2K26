@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baixar o VisuAll</title>
+    <meta name="description" content="Baixe a versão mais recente do VisuAll para Android.">
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" href="../images/favicon-64.png" type="image/png">
+    <!-- Endereço fixo de propósito: é para cá que o QR code aponta. Se o app
+         mudar de lugar (Play Store, outro repositório), só o link do botão
+         abaixo muda, e todo QR já impresso continua funcionando. -->
+    <style>
+        @font-face{font-family:'Inter';font-weight:100 900;font-display:swap;src:url('../fonts/inter-latin.woff2') format('woff2')}
+        *{box-sizing:border-box}
+        body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 20px;background:#000;color:#fff;font-family:'Inter',system-ui,sans-serif;font-weight:300;line-height:1.5}
+        main{width:100%;max-width:440px}
+        img{display:block;width:120px;height:auto;margin-bottom:24px}
+        h1{margin:0 0 12px;font-size:36px;font-weight:400;line-height:1.1;letter-spacing:-.04em}
+        p{margin:0 0 24px;color:#bdbdbd}
+        .btn{display:flex;justify-content:center;padding:18px 24px;border-radius:24px;background:#ffd34d;color:#000;font-size:14px;font-weight:600;letter-spacing:.025em;text-transform:uppercase;text-decoration:none}
+        .btn:hover,.btn:focus-visible{background:#fff}
+        .versao{margin:12px 0 36px;font-size:14px;text-align:center;color:#9a9a9a}
+        ol{margin:0 0 36px;padding:0;list-style:none;counter-reset:passo;border-top:1px solid rgba(255,255,255,.16)}
+        li{counter-increment:passo;display:grid;grid-template-columns:32px 1fr;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.16);color:#bdbdbd}
+        li::before{content:counter(passo);color:#ffd34d;font-weight:600}
+        a.voltar{color:#ffd34d}
+    </style>
+</head>
+<body>
+    <main>
+        <img src="../images/logo-completa.webp" alt="VisuAll" width="480" height="440">
+        <h1>Baixe o VisuAll</h1>
+        <p>Para celulares Android 8 ou mais recentes. O link entrega sempre a versão mais nova do app.</p>
+
+        <a class="btn" href="https://github.com/Juanduarte050508/VisuAll/releases/download/app/VisuAll.apk">Baixar para Android</a>
+        <p class="versao" data-versao-apk>&nbsp;</p>
+
+        <ol>
+            <li>Toque em baixar e abra o arquivo quando terminar.</li>
+            <li>Se o celular pedir, permita instalar apps desta fonte.</li>
+            <li>Já tem o VisuAll? Instale por cima: o histórico continua.</li>
+        </ol>
+
+        <p><a class="voltar" href="../html/index.html">Conhecer o projeto</a></p>
+    </main>
+    <script src="../js/versao-apk.js" defer></script>
+</body>
+</html>

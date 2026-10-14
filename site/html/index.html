@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="../CSS/_global.css?v=24">
     <link rel="stylesheet" href="../CSS/reset.css?v=24">
     <link rel="stylesheet" href="../CSS/header.css?v=24">
-    <link rel="stylesheet" href="../CSS/body.css?v=24">
+    <link rel="stylesheet" href="../CSS/body.css?v=27">
     <link rel="stylesheet" href="../CSS/app.css?v=24">
     <link rel="stylesheet" href="../CSS/footer.css?v=24">
 </head>
@@ -48,6 +48,7 @@
         <symbol id="s-chip" viewBox="0 0 64 64"><rect x="18" y="18" width="28" height="28" rx="4"/><rect x="27" y="27" width="10" height="10" rx="1.5"/><path d="M25 18v-8M32 18v-8M39 18v-8M25 54v-8M32 54v-8M39 54v-8M18 25h-8M18 32h-8M18 39h-8M54 25h-8M54 32h-8M54 39h-8"/></symbol>
         <symbol id="s-video" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24"/><path d="M27 22.5 42 32 27 41.5z"/></symbol>
         <symbol id="s-equipe" viewBox="0 0 64 64"><path d="M32 12 51 26 44 49H20L13 26zM32 12v20M51 26 32 32M44 49 32 32M20 49l12-17M13 26l19 6" stroke-width="1.3"/><g fill="currentColor" stroke="none"><circle cx="32" cy="32" r="4.5"/><circle cx="32" cy="12" r="3.5"/><circle cx="51" cy="26" r="3.5"/><circle cx="44" cy="49" r="3.5"/><circle cx="20" cy="49" r="3.5"/><circle cx="13" cy="26" r="3.5"/></g></symbol>
+        <symbol id="s-baixar" viewBox="0 0 64 64"><rect x="20" y="7" width="24" height="50" rx="6"/><path d="M32 19v19M25 31l7 7 7-7M27 46h10"/></symbol>
         <symbol id="s-contato" viewBox="0 0 64 64"><rect x="9" y="15" width="46" height="34" rx="5"/><path d="m10 19 22 17 22-17"/></symbol>
     </svg>
 
@@ -71,6 +72,7 @@
                 <li><a href="#funcionamento">Como funciona</a></li>
                 <li><a href="#tecnologia">Tecnologia</a></li>
                 <li><a href="#galeria">Vídeo</a></li>
+                <li><a href="#baixar">Baixar</a></li>
                 <li><a href="#equipe">Equipe</a></li>
             </ul>
         </nav>
@@ -556,11 +558,47 @@
             </div>
         </section>
 
+        <!-- ================= BAIXAR ================= -->
+        <section class="secao" id="baixar">
+            <div class="recipiente">
+                <div class="secao-cabecalho revela">
+                    <p class="secao-rotulo">07 · Baixar</p>
+                    <h2 class="secao-titulo">Teste no seu celular</h2>
+                    <svg class="secao-objeto secao-icone" viewBox="0 0 64 64" aria-hidden="true"><use href="#s-baixar"/></svg>
+                    <p class="secao-lead">
+                        O app recebe melhorias toda semana. O botão e o QR code
+                        entregam sempre a versão mais nova.
+                    </p>
+                </div>
+
+                <!-- O link do APK nunca muda: o CI troca o arquivo a cada versão
+                     (release "app", ver .github/workflows/android-build.yml). O QR
+                     aponta para ../baixar/, uma página fixa nossa, e não direto
+                     para o arquivo: se o app mudar de lugar, nenhum QR impresso
+                     deixa de funcionar. -->
+                <div class="grade-baixar revela">
+                    <div class="baixar-acao">
+                        <a class="btn btn--primario" href="https://github.com/Juanduarte050508/VisuAll/releases/download/app/VisuAll.apk">Baixar para Android</a>
+                        <p class="baixar-versao" data-versao-apk>Android 8 ou mais recente</p>
+                        <ol class="baixar-passos">
+                            <li>Baixe o arquivo e abra quando terminar.</li>
+                            <li>Se o celular pedir, permita instalar apps desta fonte.</li>
+                            <li>Já tem o VisuAll? Instale por cima: o histórico continua.</li>
+                        </ol>
+                    </div>
+                    <figure class="baixar-qr">
+                        <img src="../images/qr-baixar.svg" alt="QR code que abre a página de download do VisuAll" width="200" height="200" loading="lazy">
+                        <figcaption>Aponte a câmera do celular</figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
         <!-- ================= EQUIPE ================= -->
         <section class="secao" id="equipe">
             <div class="recipiente">
                 <div class="secao-cabecalho revela">
-                    <p class="secao-rotulo">07 · Equipe</p>
+                    <p class="secao-rotulo">08 · Equipe</p>
                     <h2 class="secao-titulo">Quem construiu o VisuAll</h2>
                     <svg class="secao-objeto secao-icone" viewBox="0 0 64 64" aria-hidden="true"><use href="#s-equipe"/></svg>
                     <p class="secao-lead">
@@ -626,12 +664,73 @@
         <section class="secao" id="contato">
             <div class="recipiente">
                 <div class="secao-cabecalho revela">
-                    <p class="secao-rotulo">08 · Contato</p>
+                    <p class="secao-rotulo">09 · Contato</p>
                     <h2 class="secao-titulo">Fale com a equipe</h2>
                     <svg class="secao-objeto secao-icone" viewBox="0 0 64 64" aria-hidden="true"><use href="#s-contato"/></svg>
                     <p class="secao-lead">
-                        Escreva para a gente ou siga os nossos canais.
+                        Avalie o projeto, escreva para a gente ou siga os nossos canais.
                     </p>
+                </div>
+
+                <!-- Avaliação: vai para uma planilha da equipe (site/avaliacao/README.md).
+                     Nada aparece no site sem a equipe marcar "Publicar" na planilha. -->
+                <div class="avaliacao revela" id="avaliar">
+                    <h3 class="avaliacao-titulo">Avalie o VisuAll</h3>
+                    <p class="avaliacao-lead">Conte o que achou do site e do projeto. A equipe lê tudo.</p>
+
+                    <form class="form-avaliacao" data-avaliacao>
+                        <fieldset class="campo campo--largo">
+                            <legend class="campo-rotulo">Sua nota</legend>
+                            <div class="estrelas">
+                                <input class="so-leitor" type="radio" name="nota" id="nota-1" value="1" required>
+                                <label for="nota-1"><span aria-hidden="true">★</span><span class="so-leitor">1 de 5</span></label>
+                                <input class="so-leitor" type="radio" name="nota" id="nota-2" value="2">
+                                <label for="nota-2"><span aria-hidden="true">★</span><span class="so-leitor">2 de 5</span></label>
+                                <input class="so-leitor" type="radio" name="nota" id="nota-3" value="3">
+                                <label for="nota-3"><span aria-hidden="true">★</span><span class="so-leitor">3 de 5</span></label>
+                                <input class="so-leitor" type="radio" name="nota" id="nota-4" value="4">
+                                <label for="nota-4"><span aria-hidden="true">★</span><span class="so-leitor">4 de 5</span></label>
+                                <input class="so-leitor" type="radio" name="nota" id="nota-5" value="5">
+                                <label for="nota-5"><span aria-hidden="true">★</span><span class="so-leitor">5 de 5</span></label>
+                            </div>
+                        </fieldset>
+
+                        <div class="campo">
+                            <label class="campo-rotulo" for="av-nome">Nome</label>
+                            <input class="campo-entrada" id="av-nome" name="nome" type="text" autocomplete="name" maxlength="80" required>
+                        </div>
+
+                        <div class="campo">
+                            <label class="campo-rotulo" for="av-contato">E-mail ou telefone <span class="campo-opcional">(opcional)</span></label>
+                            <input class="campo-entrada" id="av-contato" name="contato" type="text" autocomplete="email" maxlength="120">
+                        </div>
+
+                        <div class="campo campo--largo">
+                            <label class="campo-rotulo" for="av-mensagem">Sua mensagem</label>
+                            <textarea class="campo-entrada" id="av-mensagem" name="mensagem" rows="4" maxlength="1000" required></textarea>
+                        </div>
+
+                        <!-- Armadilha para robôs: pessoas não veem este campo -->
+                        <div class="campo-armadilha" aria-hidden="true">
+                            <label for="av-site">Não preencha</label>
+                            <input id="av-site" name="site" type="text" tabindex="-1" autocomplete="off">
+                        </div>
+
+                        <div class="form-rodape campo--largo">
+                            <p class="form-aviso">Seu nome e sua mensagem podem aparecer aqui depois que a equipe aprovar. O contato fica só com a gente.</p>
+                            <button class="btn btn--primario" type="submit">Enviar avaliação</button>
+                        </div>
+                        <p class="form-status campo--largo" role="status" aria-live="polite"></p>
+                    </form>
+                </div>
+
+                <!-- Avaliações aprovadas, preenchidas por js/avaliacao.js. Sem
+                     nenhuma aprovada (ou sem resposta da planilha), nem aparece. -->
+                <div class="depoimentos revela" data-depoimentos hidden>
+                    <h3 class="avaliacao-titulo">Quem já avaliou</h3>
+                    <!-- Botões de filtro criados pelo script, só quando há notas diferentes -->
+                    <div class="x-atalhos depoimentos-filtro" role="group" aria-label="Filtrar avaliações por estrelas" hidden></div>
+                    <ul class="depoimentos-lista"></ul>
                 </div>
 
                 <address class="grade-contato revela">
@@ -692,6 +791,8 @@
                     <li><a href="#funcionamento">Funcionamento</a></li>
                     <li><a href="#publico">Público-alvo</a></li>
                     <li><a href="#tecnologia">Tecnologia</a></li>
+                    <li><a href="#baixar">Baixar o app</a></li>
+                    <li><a href="#avaliar">Avaliar o projeto</a></li>
                 </ul>
             </nav>
 
@@ -719,5 +820,7 @@
     <script src="../js/explorador.js?v=24" defer></script>
     <script src="../js/carrossel.js?v=24" defer></script>
     <script src="../js/video.js?v=24" defer></script>
+    <script src="../js/versao-apk.js?v=25" defer></script>
+    <script src="../js/avaliacao.js?v=27" defer></script>
 </body>
 </html>
