@@ -15,7 +15,11 @@ android {
         versionCode 3
         versionName "1.2"
         ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a", "x86"
+            abiFilters "armeabi-v7a", "arm64-v8a"
+            // x86 so roda no emulador do Android Studio, nenhum celular do
+            // publico usa. Fica nos builds locais e sai do APK do site (feito
+            // no CI, onde CI=true), em que pesava 123 MB dos 316.
+            if (!System.getenv('CI')) abiFilters "x86"
         }
     }
 
@@ -69,6 +73,12 @@ android {
                          'META-INF/DEPENDENCIES','META-INF/*.kotlin_module']
         }
         jniLibs {
+            // Comprime as .so dentro do APK (o padrao e guardar cruas, pra
+            // carregar direto do arquivo). Elas sao quase todo o tamanho do
+            // app e encolhem a 1/3: o download do site cai de ~316 MB pra
+            // ~100 MB. Custo: a instalacao extrai as bibliotecas, uns
+            // segundos a mais uma vez so.
+            useLegacyPackaging = true
             pickFirsts += ['lib/arm64-v8a/libc++_shared.so',
                            'lib/armeabi-v7a/libc++_shared.so','lib/x86/libc++_shared.so']
         }
